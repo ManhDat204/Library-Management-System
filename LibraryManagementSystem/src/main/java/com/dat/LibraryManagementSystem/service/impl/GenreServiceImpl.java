@@ -1,0 +1,109 @@
+package com.dat.LibraryManagementSystem.service.impl;
+
+import com.dat.LibraryManagementSystem.exception.GenreException;
+import com.dat.LibraryManagementSystem.mapper.GenreMapper;
+import com.dat.LibraryManagementSystem.model.Genre;
+import com.dat.LibraryManagementSystem.payload.dto.GenreDTO;
+import com.dat.LibraryManagementSystem.repository.GenreRepository;
+import com.dat.LibraryManagementSystem.service.GenreService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+public class GenreServiceImpl implements GenreService {
+
+    private final GenreRepository genreRepository;
+    private final GenreMapper genreMapper;
+
+    @Override
+    public GenreDTO createGenre(GenreDTO genreDTO) {
+
+        Genre genre = genreMapper.toEntity(genreDTO);
+        Genre savedGenre = genreRepository.save(genre);
+        return genreMapper.toDTO(savedGenre);
+    }
+
+    @Override
+    public List<GenreDTO> getAllGenres() {
+        return genreRepository.findAll().stream()
+                .map(genreMapper::toDTO)
+                .collect(Collectors.toList());
+
+    }
+
+    @Override
+    public GenreDTO getGenreById(Long genreId) throws GenreException {
+        Genre genre = genreRepository.findById(genreId).orElseThrow(
+                () -> new GenreException("Thể loại không tồn tại"));
+        return genreMapper.toDTO(genre);
+    }
+
+    @Override
+    public GenreDTO updateGenre(Long genreId, GenreDTO genreDTO) throws GenreException {
+        Genre existingGenre = genreRepository.findById(genreId).orElseThrow(
+                () -> new GenreException("Thể loại không tồn tại"));
+        genreMapper.updateEntityFromDTO(genreDTO, existingGenre);
+        Genre updatedGenre = genreRepository.save(existingGenre);
+
+        return genreMapper.toDTO(updatedGenre);
+    }
+
+    @Override
+    public void deleteGenre(Long genreId) throws GenreException {
+        Genre existingGenre = genreRepository.findById(genreId).orElseThrow(
+                () -> new GenreException("Thể loại không tồn tại"));
+        genreRepository.delete(existingGenre);
+    }
+
+    @Override
+    public void hardDeleteGenre(Long genreId) throws GenreException {
+        Genre existingGenre = genreRepository.findById(genreId).orElseThrow(
+                () -> new GenreException("Thể loại không tồn tại"));
+        genreRepository.delete(existingGenre);
+    }
+
+    @Override
+    public List<GenreDTO> getAllActiveGenresWithSubGenres() {
+        List<Genre> topLevelGenres = genreRepository
+                .findByParentGenreIsNullAndActiveTrueOrderByDisplayOrderAsc();
+
+        return genreMapper.toDTOList(topLevelGenres);
+    }
+
+    @Override
+    public List<GenreDTO> getSubGenres(Long genreId) {
+        return genreRepository.findByParentGenreIdAndActiveTrueOrderByDisplayOrderAsc(genreId)
+                .stream()
+                .map(genreMapper::toDTO)
+                .collect(Collectors.toList());
+    }
+
+    // @Override
+    // public List<GenreDTO> getTopLeverGenresWithSubGenres() {
+    // List<Genre> topLevelGenre =genreRepository
+    // .findByParentGenreIsNullAndActiveTrueOrderByDisplayOrderAsc();
+    //
+    // return genreMapper.toDTOList(topLevelGenre);
+    // }
+
+    @Override
+    public List<GenreDTO> getTopLevelGenres() {
+        List<Genre> topLevelGenres = genreRepository
+                .findByParentGenreIsNullAndActiveTrueOrderByDisplayOrderAsc();
+        return genreMapper.toDTOList(topLevelGenres);
+    }
+
+    @Override
+    public long getTotalActiveGenres() {
+        return genreRepository.countByActiveTrue();
+    }
+
+    @Override
+    public long getBookCountByGenres(Long genreId) {
+        return genreRepository.countBooksByGenre(genreId);
+    }
+}

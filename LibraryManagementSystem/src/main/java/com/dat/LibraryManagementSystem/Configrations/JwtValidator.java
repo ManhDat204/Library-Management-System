@@ -27,9 +27,17 @@ import java.util.List;
 
 public class JwtValidator extends OncePerRequestFilter {
     @Override
+
     protected void doFilterInternal (HttpServletRequest request,
                                      HttpServletResponse response,
                                      FilterChain filterChain) throws ServletException, IOException{
+//        System.out.println("PATH = " + request.getRequestURI());
+        String path = request.getServletPath();
+        // add
+        if (path.equals("/api/payments/vnpay-return")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
         String  jwt = request.getHeader(JwtConstant.JWT_HEADER);
         if(jwt != null){
             jwt = jwt.substring(7);

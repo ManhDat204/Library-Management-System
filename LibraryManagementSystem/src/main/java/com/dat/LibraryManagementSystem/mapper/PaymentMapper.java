@@ -21,6 +21,7 @@ public class PaymentMapper {
         if (p.getUser() != null) {
             dto.setUserId(p.getUser().getId());
             dto.setUserName(p.getUser().getFullName());
+            dto.setUserEmail(p.getUser().getEmail());
         }
         if (p.getSubscription() != null) {
             dto.setSubscriptionId(p.getSubscription().getId());

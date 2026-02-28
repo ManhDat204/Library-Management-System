@@ -27,6 +27,7 @@ public class PaymentController {
         return ResponseEntity.ok(created);
     }
 
+
     @GetMapping("/{id}")
     public ResponseEntity<PaymentDTO> getPayment(@PathVariable Long id) throws PaymentException {
         PaymentDTO dto = paymentService.getPayment(id);
@@ -51,5 +52,17 @@ public class PaymentController {
         });
         PaymentDTO dto = paymentService.handleVnPayReturn(params);
         return ResponseEntity.ok(dto);
+    }
+
+    @PostMapping("/vnpay-verify")
+    public ResponseEntity<?> verify(@RequestBody Map<String, String> params) throws PaymentException {
+
+        PaymentDTO dto = paymentService.handleVnPayReturn(params);
+
+        if ("00".equals(params.get("vnp_ResponseCode"))) {
+            return ResponseEntity.ok(Map.of("status", "SUCCESS"));
+        } else {
+            return ResponseEntity.ok(Map.of("status", "FAILED"));
+        }
     }
 }

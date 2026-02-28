@@ -93,6 +93,11 @@ public class PaymentServiceImpl implements PaymentService {
         if (parameters == null || parameters.isEmpty()) {
             throw new PaymentException("Empty parameters from VNPay");
         }
+
+        //
+//        System.out.println("ALL PARAMS FROM VNPAY: " + parameters);
+        //
+
         String txnRef = parameters.get("vnp_TxnRef");
         if (txnRef == null) {
             throw new PaymentException("Missing vnp_TxnRef");
@@ -103,6 +108,12 @@ public class PaymentServiceImpl implements PaymentService {
         // verify secure hash
         String secureHash = parameters.get("vnp_SecureHash");
         String generatedHash = generateVnpHash(parameters);
+
+        //doan moi
+//        System.out.println("VNP_SECURE_HASH: " + secureHash);
+//        System.out.println("GENERATED_HASH : " + generatedHash);
+        //
+
         if (!Objects.equals(secureHash, generatedHash)) {
             log.warn("hash mismatch {} vs {}", secureHash, generatedHash);
             throw new PaymentException("Invalid secure hash");
@@ -122,6 +133,7 @@ public class PaymentServiceImpl implements PaymentService {
         }
         Payment updated = paymentRepository.save(payment);
         return paymentMapper.toDTO(updated);
+
     }
 
     @Override
@@ -137,6 +149,8 @@ public class PaymentServiceImpl implements PaymentService {
         vnpParams.put("vnp_TmnCode", VNPayConfig.vnp_TmnCode);
         vnpParams.put("vnp_Amount", String.valueOf(payment.getAmount() == null ? 0L : payment.getAmount() * 100));
         vnpParams.put("vnp_CurrCode", "VND");
+        vnpParams.put("vnp_OrderType", "other");
+        vnpParams.put("vnp_IpAddr", "127.0.0.1");
         vnpParams.put("vnp_TxnRef", payment.getTxnRef());
         vnpParams.put("vnp_OrderInfo", payment.getDescription() != null ? payment.getDescription() : "");
         vnpParams.put("vnp_Locale", "vn");
@@ -148,11 +162,20 @@ public class PaymentServiceImpl implements PaymentService {
         Collections.sort(fieldNames);
         StringBuilder hashData = new StringBuilder();
         StringBuilder query = new StringBuilder();
+//        for (String key : fieldNames) {
+//            String value = vnpParams.get(key);
+//            if (value != null && value.length() > 0) {
+////                hashData.append(key).append("=").append(URLEncoder.encode(value, StandardCharsets.US_ASCII)).append('&');
+//                hashData.append(key).append("=").append(value).append("&");
+//                query.append(key).append("=").append(URLEncoder.encode(value, StandardCharsets.UTF_8)).append('&');
+//            }
+//        }
         for (String key : fieldNames) {
             String value = vnpParams.get(key);
             if (value != null && value.length() > 0) {
-                hashData.append(key).append("=").append(URLEncoder.encode(value, StandardCharsets.US_ASCII)).append('&');
-                query.append(key).append("=").append(URLEncoder.encode(value, StandardCharsets.US_ASCII)).append('&');
+                String encodedValue = URLEncoder.encode(value, StandardCharsets.UTF_8);
+                hashData.append(key).append("=").append(encodedValue).append("&");
+                query.append(key).append("=").append(encodedValue).append("&");
             }
         }
         if (hashData.length() > 0) hashData.setLength(hashData.length() - 1);
@@ -166,12 +189,18 @@ public class PaymentServiceImpl implements PaymentService {
         List<String> fieldNames = new ArrayList<>(params.keySet());
         // remove hash field if present
         fieldNames.remove("vnp_SecureHash");
+
+        fieldNames.remove("vnp_SecureHashType");
+
         Collections.sort(fieldNames);
         StringBuilder hashData = new StringBuilder();
         for (String key : fieldNames) {
             String value = params.get(key);
             if (value != null && value.length() > 0) {
-                hashData.append(key).append("=").append(value).append('&');
+                String encodedValue = URLEncoder.encode(value, StandardCharsets.UTF_8);
+
+//                hashData.append(key).append("=").append(value).append('&');
+                hashData.append(key).append("=").append(encodedValue).append('&');
             }
         }
         if (hashData.length() > 0) hashData.setLength(hashData.length() - 1);

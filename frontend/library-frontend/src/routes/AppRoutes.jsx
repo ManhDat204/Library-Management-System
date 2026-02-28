@@ -5,6 +5,7 @@ import Books from '../pages/Books';
 import Categories from '../pages/Categories';
 import Users from '../pages/Users';
 import Loans from '../pages/Loans';
+import OrderComplete from '../pages/OrderComplete';
 import ProtectedRoute from './ProtectedRoute';
 
 const AppRoutes = () => {
@@ -13,6 +14,7 @@ const AppRoutes = () => {
       <Routes>
         {/* Trang login không cần bảo vệ */}
         <Route path="/login" element={<Login />} />
+        <Route path="/order-complete" element={<OrderComplete />} />
 
         {/* Các trang cần đăng nhập */}
         <Route

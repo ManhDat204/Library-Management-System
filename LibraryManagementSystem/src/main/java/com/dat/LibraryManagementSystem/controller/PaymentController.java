@@ -8,6 +8,10 @@ import com.dat.LibraryManagementSystem.service.PaymentService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -33,6 +37,25 @@ public class PaymentController {
         PaymentDTO dto = paymentService.getPayment(id);
         return ResponseEntity.ok(dto);
     }
+
+
+    @GetMapping()
+    public ResponseEntity<?> getAllPayment(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "createdAt") String sortDir) {
+        Sort sort = sortDir.equalsIgnoreCase("DESC")
+                ? Sort.by(sortBy).descending()
+                : Sort.by(sortBy).ascending();
+        Pageable pageable = PageRequest.of(page, size, sort);
+        Page<PaymentDTO> payments= paymentService.getAllPayments(pageable);
+        return ResponseEntity.ok(payments);
+    }
+
+
+
+
 
     @GetMapping("/{id}/url")
     public ResponseEntity<ApiResponse> getVnPayUrl(@PathVariable Long id) throws PaymentException {

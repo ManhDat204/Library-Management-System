@@ -4,6 +4,8 @@ import com.dat.LibraryManagementSystem.domain.PaymentGateway;
 
 public class PaymentResponse {
 
+    private Long userId;
+
     private Long paymentId;
 
     private PaymentGateway gateway;

@@ -25,9 +25,8 @@ public class BookDTO {
     @Size(min =1, max = 255, message = "Tieu de co do dai tu 1 den 255")
     private String title;
 
-    @NotBlank(message = "Author la bat buoc ")
-    @Size(min =1, max = 255, message = "Tac gia co do dai tu 1 den 255")
-    private String author;
+    private Long authorId;
+    private String authorName;
 
     @NotNull(message = "The loai la bat buoc")
     private Long genreId;
@@ -36,8 +35,11 @@ public class BookDTO {
     private String genreCode;
 
 
-    @Size( max = 100, message = "Publisher khong 100 ki tu")
-    private String publisher;
+
+    private Long publisherId;
+    private String publisherName;
+
+
 
     private LocalDate publicationDate;
 

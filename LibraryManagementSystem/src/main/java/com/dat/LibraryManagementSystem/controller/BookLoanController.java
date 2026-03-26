@@ -11,6 +11,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -36,19 +37,33 @@ public class BookLoanController {
     }
 
 
-    @PostMapping("/checkin")
-    public ResponseEntity<?> checkin(
-            @Valid @RequestBody CheckInRequest checkInRequest) throws Exception{
-        BookLoanDTO bookLoan = bookLoanService.checkInBook(checkInRequest);
-        return new ResponseEntity<>(bookLoan,HttpStatus.CREATED);
+//    @PostMapping("/checkin")
+//    public ResponseEntity<?> checkin(
+//            @Valid @RequestBody CheckInRequest checkInRequest) throws Exception{
+//        BookLoanDTO bookLoan = bookLoanService.checkInBook(checkInRequest);
+//        return new ResponseEntity<>(bookLoan,HttpStatus.CREATED);
+//    }
+    @GetMapping("/my/{id}")
+    public ResponseEntity<BookLoanDTO> getMyBookLoanById(
+        @PathVariable Long id) throws Exception {
+    BookLoanDTO bookLoan = bookLoanService.getMyBookLoanById(id);
+    return ResponseEntity.ok(bookLoan);
+}
+
+    // User bấm "Đã nhận đơn"
+    @PatchMapping("/my/{id}/confirm-received")
+    public ResponseEntity<BookLoanDTO> confirmReceived(
+            @PathVariable Long id) throws Exception {
+        return ResponseEntity.ok(bookLoanService.confirmReceived(id));
     }
 
+// Thêm vào admin controller (hoặc cùng file, thêm @PreAuthorize):
 
-    @PostMapping("/renew")
-    public ResponseEntity<?> renew(
-            @Valid @RequestBody RenewalRequest renewalRequest) throws Exception{
-        BookLoanDTO bookLoan = bookLoanService.renewCheckout(renewalRequest);
-        return new ResponseEntity<>(bookLoan,HttpStatus.OK);
+    // Admin bấm "Giao hàng"
+    @PatchMapping("/{id}/shipping")
+    public ResponseEntity<BookLoanDTO> markAsShipping(
+            @PathVariable Long id) throws Exception {
+        return ResponseEntity.ok(bookLoanService.markAsShipping(id));
     }
 
 
@@ -61,6 +76,12 @@ public class BookLoanController {
         PageResponse<BookLoanDTO> bookLoan= bookLoanService.getMyBookLoans(status, page,size);
         return ResponseEntity.ok(bookLoan);
     }
+//    @PostMapping("/my/checkin")
+//    public ResponseEntity<?> selfCheckin(
+//            @Valid @RequestBody CheckInRequest checkInRequest) throws Exception {
+//        BookLoanDTO bookLoan = bookLoanService.checkInBook(checkInRequest);
+//        return new ResponseEntity<>(bookLoan, HttpStatus.OK);
+//    }
 
 
     @PostMapping("/search")
@@ -77,7 +98,20 @@ public class BookLoanController {
         return ResponseEntity.ok( new ApiResponse("overdue da cap nhat", true));
     }
 
+    @PostMapping("/my/return-request")
+    public ResponseEntity<?> requestReturn(
+            @Valid @RequestBody CheckInRequest checkInRequest) throws Exception {
+        BookLoanDTO bookLoan = bookLoanService.requestReturn(checkInRequest);
+        return ResponseEntity.ok(bookLoan);
+    }
 
+    // Admin duyệt yêu cầu trả sách
+    @PostMapping("/admin/approve-return")
+    public ResponseEntity<?> approveReturn(
+            @Valid @RequestBody ApproveReturnRequest request) throws Exception {
+        BookLoanDTO bookLoan = bookLoanService.approveReturn(request);
+        return ResponseEntity.ok(bookLoan);
+    }
 
 
 

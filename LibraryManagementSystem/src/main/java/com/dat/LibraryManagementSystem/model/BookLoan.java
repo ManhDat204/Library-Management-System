@@ -21,7 +21,7 @@ import java.time.LocalDateTime;
 @Builder
 public class BookLoan {
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
 
@@ -40,6 +40,10 @@ public class BookLoan {
     private BookLoanStatus status;
 
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "address_id")
+    private Address address;
+
     @Column( nullable = false)
     private LocalDate checkoutDate;
 
@@ -48,11 +52,7 @@ public class BookLoan {
     private LocalDate returnDate;
 
 
-    @Column( nullable = false)
-    private Integer reneWalCount =0;
 
-    @Column( nullable = false)
-    private Integer maxRenewals =2;
 
 
     @Column( length = 500)
@@ -73,13 +73,11 @@ public class BookLoan {
     private LocalDateTime updatedAt;
 
 
-    public boolean isActive(){
-        return status == BookLoanStatus.CHECK_OUT || status ==BookLoanStatus.OVERDUE;
-    }
-
-    public boolean canRenew(){
-        return  status ==BookLoanStatus.CHECK_OUT
-                && !isOverDue && reneWalCount<maxRenewals;
+    public boolean isActive() {
+        return status == BookLoanStatus.CHECK_OUT
+                || status == BookLoanStatus.OVERDUE
+                || status == BookLoanStatus.SHIPPING
+                || status == BookLoanStatus.DELIVERED;
     }
 
 }

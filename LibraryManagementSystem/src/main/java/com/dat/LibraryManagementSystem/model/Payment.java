@@ -42,7 +42,10 @@ public class Payment {
 
     private Long amount;
 
-    // Mã giao dịch của hệ thống bạn
+    @Column(name = "fine_id")
+    private Long fineId;
+
+    // Mã giao dịch của hệ thống
     private String txnRef;
 
     // Mã giao dịch trả về từ VNPay

@@ -1,5 +1,6 @@
 package com.dat.LibraryManagementSystem.mapper;
 
+import com.dat.LibraryManagementSystem.model.Address;
 import com.dat.LibraryManagementSystem.model.BookLoan;
 import com.dat.LibraryManagementSystem.payload.dto.BookLoanDTO;
 import lombok.extern.slf4j.Slf4j;
@@ -11,32 +12,32 @@ import java.time.temporal.ChronoUnit;
 @Slf4j
 @Component
 public class BookLoanMapper {
-    public BookLoanDTO toDTO(BookLoan bookLoan){
-        if(bookLoan ==null){
+    public BookLoanDTO toDTO(BookLoan bookLoan) {
+        if (bookLoan == null) {
             return null;
         }
         BookLoanDTO dto = new BookLoanDTO();
         dto.setId(bookLoan.getId());
 
         // thong tin nguoi dung
-        if(bookLoan.getUser()!=null){
+        if (bookLoan.getUser() != null) {
             dto.setUserId(bookLoan.getUser().getId());
             dto.setUserName(bookLoan.getUser().getFullName());
             dto.setUserEmail(bookLoan.getUser().getEmail());
         }
 
         //thong tin sach
-        if(bookLoan.getBook()!= null){
+        if (bookLoan.getBook() != null) {
             dto.setBookId(bookLoan.getBook().getId());
             dto.setBookTitle(bookLoan.getBook().getTitle());
             dto.setBookIsbn(bookLoan.getBook().getIsbn());
-            dto.setBookAuthor(bookLoan.getBook().getAuthor());
+            dto.setAuthorName(bookLoan.getBook().getAuthor().getAuthorName());
             dto.setBookCoverImage(bookLoan.getBook().getCoverImageUrl());
         }
 
         //chi tiet muon sach
         dto.setBookLoanType(bookLoan.getBookLoanType());
-        dto.setBookLoanStatus(bookLoan.getStatus()  );
+        dto.setBookLoanStatus(bookLoan.getStatus());
         dto.setCheckoutDate(bookLoan.getCheckoutDate());
         dto.setDueDate(bookLoan.getDueDate());
         dto.setRemainingDays(
@@ -46,8 +47,7 @@ public class BookLoanMapper {
                 )
         );
         dto.setReturnDate(bookLoan.getReturnDate());
-        dto.setRenewalCount(bookLoan.getReneWalCount());
-        dto.setMaxRenewals(bookLoan.getMaxRenewals());
+
 
         dto.setNotes(bookLoan.getNotes());
         dto.setIsOverdue(bookLoan.getIsOverDue());
@@ -55,7 +55,21 @@ public class BookLoanMapper {
         dto.setCreatedAt(bookLoan.getCreatedAt());
         dto.setUpdatedAt(bookLoan.getUpdatedAt());
 
+
+        if (bookLoan.getAddress() != null) {
+            Address addr = bookLoan.getAddress();
+            dto.setAddressId(addr.getId());
+            dto.setRecipientName(addr.getRecipientName());
+            dto.setPhoneNumber(addr.getPhoneNumber());
+            dto.setProvince(addr.getProvince());
+            dto.setDistrict(addr.getDistrict());
+            dto.setWard(addr.getWard());
+
+        }
         return dto;
     }
-
 }
+
+
+
+

@@ -1,10 +1,14 @@
 package com.dat.LibraryManagementSystem.mapper;
 
 import com.dat.LibraryManagementSystem.exception.BookException;
+import com.dat.LibraryManagementSystem.model.Author;
 import com.dat.LibraryManagementSystem.model.Book;
 import com.dat.LibraryManagementSystem.model.Genre;
+import com.dat.LibraryManagementSystem.model.Publisher;
 import com.dat.LibraryManagementSystem.payload.dto.BookDTO;
+import com.dat.LibraryManagementSystem.repository.AuthorRepository;
 import com.dat.LibraryManagementSystem.repository.GenreRepository;
+import com.dat.LibraryManagementSystem.repository.PublisherRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -13,6 +17,8 @@ import org.springframework.stereotype.Component;
 
 public class BookMapper {
     private final GenreRepository genreRepository;
+    private final AuthorRepository authorRepository;
+    private final PublisherRepository publisherRepository;
     public BookDTO toDTO(Book book){
         if(book==null){
             return null;
@@ -20,12 +26,14 @@ public class BookMapper {
         BookDTO dto = BookDTO.builder()
                 .id(book.getId())
                 .title(book.getTitle())
-                .author(book.getAuthor())
+                .authorId(book.getAuthor().getId())
+                .authorName(book.getAuthor().getAuthorName())
                 .isbn(book.getIsbn())
                 .genreId(book.getGenre().getId())
                 .genreName(book.getGenre().getName())
                 .genreCode(book.getGenre().getCode())
-                .publisher(book.getPublisher())
+                .publisherId(book.getPublisher().getId())
+                .publisherName(book.getPublisher().getName())
                 .publicationDate(book.getPublishedDate())
                 .language(book.getLanguage())
                 .pages(book.getPages())
@@ -48,15 +56,24 @@ public class BookMapper {
         book.setId(dto.getId()) ;
         book.setIsbn(dto.getIsbn());
         book.setTitle(dto.getTitle());
-        book.setAuthor(dto.getAuthor());
+        if(dto.getAuthorId() != null){
+            Author author = authorRepository.findById(dto.getAuthorId())
+                    .orElseThrow(() -> new BookException("Author with ID " + dto.getAuthorId() + " not found"));
+
+            book.setAuthor(author);
+        }
         //map genre
 
         if(dto.getGenreId() != null){
             Genre genre = genreRepository.findById(dto.getGenreId())
-                    .orElseThrow(() -> new BookException("Genre with ID" + dto.getGenreId() + "not found "));
+                    .orElseThrow(() -> new BookException("Genre with id" + dto.getGenreId() + "not found "));
                     book.setGenre(genre);
         }
-        book.setPublisher(dto.getPublisher());
+        if(dto.getPublisherId() != null){
+            Publisher publisher = publisherRepository.findById(dto.getPublisherId())
+                    .orElseThrow(() -> new BookException("Publisher with id" + dto.getPublisherId() + "not found "));
+            book.setPublisher(publisher);
+        }
         book.setPublishedDate(dto.getPublicationDate());
         book.setLanguage(dto.getLanguage());
         book.setPages(dto.getPages());
@@ -76,14 +93,23 @@ public class BookMapper {
             return ;
         }
         book.setTitle(dto.getTitle());
-        book.setAuthor(dto.getAuthor());
+        if(dto.getAuthorId() != null){
+            Author author = authorRepository.findById(dto.getAuthorId())
+                    .orElseThrow(() -> new BookException("Author with ID " + dto.getAuthorId() + " not found"));
+
+            book.setAuthor(author);
+        }
 
         if(dto.getGenreId()!= null){
             Genre genre = genreRepository.findById(dto.getGenreId())
                     .orElseThrow(()->new BookException("Genre with ID" + dto.getGenreId() + "not found "));
             book.setGenre(genre);
         }
-        book.setPublisher(dto.getPublisher());
+        if(dto.getPublisherId()!= null){
+            Publisher publisher = publisherRepository.findById(dto.getPublisherId())
+                    .orElseThrow(()->new BookException("Genre with ID" + dto.getPublisherId() + "not found "));
+            book.setPublisher(publisher);
+        }
         book.setPublishedDate(dto.getPublicationDate());
         book.setLanguage(dto.getLanguage());
         book.setPages(dto.getPages());

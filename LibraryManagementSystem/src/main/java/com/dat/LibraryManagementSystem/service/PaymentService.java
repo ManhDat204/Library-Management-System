@@ -10,6 +10,7 @@ import java.util.Map;
 
 public interface PaymentService {
 
+    Page<PaymentDTO> getMyPayments(Long userId, String type, Pageable pageable);
 
     PaymentDTO createPayment(PaymentDTO dto) throws PaymentException, UserException;
 

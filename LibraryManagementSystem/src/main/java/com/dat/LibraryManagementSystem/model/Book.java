@@ -19,7 +19,7 @@ import java.time.LocalDateTime;
 @Builder
 public class Book {
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Column(unique = true, nullable = false)
@@ -28,14 +28,17 @@ public class Book {
     @Column( nullable = false)
     private String title;
 
-    @Column( nullable = false)
-    private String author;
-
-    @JoinColumn(nullable = false)
     @ManyToOne
+    @JoinColumn(nullable = false)
+    private Author author;
+
+    @ManyToOne
+    @JoinColumn(nullable = false)
     private Genre genre;
 
-    private String publisher;
+    @ManyToOne
+    @JoinColumn(nullable = false)
+    private Publisher publisher;
 
     private LocalDate publishedDate;
 

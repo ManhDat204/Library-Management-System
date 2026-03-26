@@ -33,6 +33,9 @@ public class SecurityConfig {
                                 .requestMatchers("/api/payments/vnpay-return").permitAll()
                                 .requestMatchers("/api/subscription-plans/admin/**").hasRole("ADMIN")
                                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                                .requestMatchers("/api/books/**").permitAll()
+                                .requestMatchers("/api/genres/**").permitAll()
+                                .requestMatchers("/api/wishlist/**").hasRole("USER")
                                 .requestMatchers("/api/**").authenticated()
                                 .anyRequest().permitAll()
 

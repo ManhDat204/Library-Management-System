@@ -24,10 +24,9 @@ public class SubscriptionMapper {
     private final UserRepository userRepository;
     private final SubscriptionPlanRepository planRepository;
 
-    /**
-     * ket noi tu entity sang DTO
-     *
-     */
+
+     //ket noi tu entity sang DTO
+
     public SubscriptionDTO toDTO(Subscription subscription) {
         if (subscription == null) {
             return null;

@@ -7,5 +7,9 @@ public enum BookLoanStatus {
     RETURNED,
     OVERDUE,
     LOST,
-    DAMAGED
+    DAMAGED,
+    PENDING_RETURN,
+    SHIPPING,
+    DELIVERED
+
 }

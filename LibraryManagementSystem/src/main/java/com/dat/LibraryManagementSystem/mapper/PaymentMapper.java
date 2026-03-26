@@ -29,6 +29,7 @@ public class PaymentMapper {
         if (p.getSubscription() != null) {
             dto.setSubscriptionId(p.getSubscription().getId());
         }
+        dto.setFineId(p.getFineId());
         dto.setPaymentType(p.getPaymentType());
         dto.setPaymentStatus(p.getPaymentStatus());
         dto.setGateway(p.getGateway());
@@ -52,6 +53,7 @@ public class PaymentMapper {
         Payment p = new Payment();
         p.setId(dto.getId());
         // user and subscription references should be set by caller if needed
+        p.setFineId(dto.getFineId());
         p.setPaymentType(dto.getPaymentType());
         p.setPaymentStatus(dto.getPaymentStatus());
         p.setGateway(dto.getGateway());

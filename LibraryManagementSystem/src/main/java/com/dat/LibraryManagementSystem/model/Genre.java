@@ -21,7 +21,7 @@ import java.util.List;
 
 public class Genre {
     @Id
-    @GeneratedValue(strategy =  GenerationType.AUTO)
+    @GeneratedValue(strategy =  GenerationType.IDENTITY)
     private Long id;
 
     @NotBlank(message = "Genre code bat buov")
@@ -33,9 +33,6 @@ public class Genre {
 
     @Size(max = 500, message = "khong duoc qua 500 ky tu")
     private String description;
-
-    @Min(value = 0, message= "display order cannot be nagetive")
-    private Integer displayOrder =0;
 
     @Column(nullable = false)
     private Boolean active=true;

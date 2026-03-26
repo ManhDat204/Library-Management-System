@@ -23,7 +23,7 @@ public class SubscriptionPlanMapper {
         dto.setCurrency(plan.getCurrency());
         dto.setMaxBooksAllowed(plan.getMaxBooksAllowed());
         dto.setMaxDaysPerBook(plan.getMaxDaysPerBook());
-        dto.setDisplayOrder(plan.getDisplayOrder());
+
         dto.setIsActive(plan.getIsActive());
         dto.setIsFeatured(plan.getIsFeatured());
         dto.setBadgeText(plan.getBadgeText());
@@ -49,7 +49,7 @@ public class SubscriptionPlanMapper {
         plan.setPrice(dto.getPrice());
         plan.setMaxBooksAllowed(dto.getMaxBooksAllowed());
         plan.setMaxDaysPerBook(dto.getMaxDaysPerBook());
-        plan.setDisplayOrder(dto.getDisplayOrder() != null ? dto.getDisplayOrder() : 0);
+
         plan.setIsActive(dto.getIsActive() != null ? dto.getIsActive() : true);
         plan.setIsFeatured(dto.getIsFeatured() != null ? dto.getIsFeatured() : false);
         plan.setBadgeText(dto.getBadgeText());
@@ -66,7 +66,9 @@ public class SubscriptionPlanMapper {
         if(plan==null||dto ==null){
             return;
         }
-
+        if(dto.getPlanCode()!=null){
+            plan.setPlanCode(dto.getPlanCode());
+        }
         if(dto.getName()!= null){
             plan.setName(dto.getName());
         }
@@ -88,9 +90,7 @@ public class SubscriptionPlanMapper {
         if(dto.getMaxDaysPerBook()!= null){
             plan.setMaxDaysPerBook(dto.getMaxDaysPerBook());
         }
-        if(dto.getDisplayOrder()!= null){
-            plan.setDisplayOrder(dto.getDisplayOrder());
-        }
+
         if(dto.getIsActive()!= null){
             plan.setIsActive(dto.getIsActive());
         }

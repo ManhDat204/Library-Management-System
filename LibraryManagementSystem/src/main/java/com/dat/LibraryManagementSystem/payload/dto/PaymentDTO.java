@@ -32,11 +32,13 @@ public class PaymentDTO {
     @NotNull(message = "Cong thanh toan la bat buoc")
     private PaymentGateway gateway;
 
-    @NotNull(message = "Tong tien la bat buoc")
-    @Positive(message = "Tong tien la duong")
+    @NotNull(message = "Tổng tiền bắt buộc")
+    @Positive(message = "Tổng tiền không âm")
     private Long amount;
 
-    @Size(min = 3, max = 3, message = "Loai tien la VND")
+    private Long fineId;
+
+    @Size(min = 3, max = 3, message = "VND")
     private String currency;
 
 

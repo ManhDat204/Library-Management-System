@@ -106,6 +106,8 @@ public class BookServiceImpl implements BookService {
         Page<Book> bookPage =  bookRepository.searchBookWithFilters(
                 searchRequest.getSearchTerm(),
                 searchRequest.getGenreId(),
+                searchRequest.getAuthorId(),
+                searchRequest.getPublisherId(),
                 searchRequest.getAvailableOnly(),
                 pageable
 

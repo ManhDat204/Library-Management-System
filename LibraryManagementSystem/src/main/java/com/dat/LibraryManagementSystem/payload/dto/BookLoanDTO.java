@@ -23,7 +23,8 @@ public class BookLoanDTO {
     private Long bookId;
     private String bookTitle;
     private String bookIsbn;
-    private String bookAuthor;
+    private Long authorId;
+    private String authorName;
     private String bookCoverImage;
     private BookLoanType bookLoanType;
     private BookLoanStatus bookLoanStatus;
@@ -32,9 +33,12 @@ public class BookLoanDTO {
     private Long remainingDays;
     private LocalDate returnDate;
 
-
-    private Integer renewalCount;
-    private Integer maxRenewals;
+    private Long addressId;
+    private String recipientName;
+    private String phoneNumber;
+    private String province;
+    private String district;
+    private String ward;
     private BigDecimal fineAmount;
     private Boolean finePaid;
     private String notes;

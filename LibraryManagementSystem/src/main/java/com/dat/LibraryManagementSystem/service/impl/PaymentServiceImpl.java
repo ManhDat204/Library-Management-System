@@ -1,7 +1,10 @@
 package com.dat.LibraryManagementSystem.service.impl;
 
 import com.dat.LibraryManagementSystem.Configrations.VNPayConfig;
+import com.dat.LibraryManagementSystem.domain.FineStatus;
+import com.dat.LibraryManagementSystem.domain.PaymentGateway;
 import com.dat.LibraryManagementSystem.domain.PaymentStatus;
+import com.dat.LibraryManagementSystem.domain.PaymentType;
 import com.dat.LibraryManagementSystem.exception.PaymentException;
 import com.dat.LibraryManagementSystem.exception.UserException;
 import com.dat.LibraryManagementSystem.mapper.PaymentMapper;
@@ -11,6 +14,7 @@ import com.dat.LibraryManagementSystem.model.User;
 import com.dat.LibraryManagementSystem.payload.dto.PaymentDTO;
 import com.dat.LibraryManagementSystem.payload.request.PaymentRequest;
 import com.dat.LibraryManagementSystem.payload.response.PaymentResponse;
+import com.dat.LibraryManagementSystem.repository.FineRepository;
 import com.dat.LibraryManagementSystem.repository.PaymentRepository;
 import com.dat.LibraryManagementSystem.repository.SubscriptionRepository;
 import com.dat.LibraryManagementSystem.repository.UserRepository;
@@ -40,6 +44,19 @@ public class PaymentServiceImpl implements PaymentService {
     private final PaymentMapper paymentMapper;
     private final UserRepository userRepository;
     private final SubscriptionRepository subscriptionRepository;
+    private final FineRepository fineRepository;
+
+    @Override
+    public Page<PaymentDTO> getMyPayments(Long userId, String type, Pageable pageable) {
+        Page<Payment> page;
+        if (type != null && !type.equalsIgnoreCase("ALL")) {
+            PaymentType pt = PaymentType.valueOf(type); // type phải khớp enum
+            page = paymentRepository.findByUser_IdAndPaymentTypeOrderByCreatedAtDesc(userId, pt, pageable);
+        } else {
+            page = paymentRepository.findByUser_IdOrderByCreatedAtDesc(userId, pageable);
+        }
+        return page.map(paymentMapper::toDTO);
+    }
 
     @Override
     public PaymentDTO createPayment(
@@ -48,8 +65,11 @@ public class PaymentServiceImpl implements PaymentService {
         User user = userRepository.findById(dto.getUserId()).orElseThrow(
                 ()-> new UserException("User id khong ton tai")
         );
-        Subscription subscription = subscriptionRepository.findById(dto.getSubscriptionId())
-                .orElseThrow(() -> new RuntimeException("Subscription khong ton tai"));
+        Subscription subscription = null;
+        if (dto.getSubscriptionId() != null) {
+            subscription = subscriptionRepository.findById(dto.getSubscriptionId())
+                    .orElseThrow(() -> new RuntimeException("Subscription khong ton tai"));
+        }
 
         Payment payment = new Payment();
         payment.setUser(user);
@@ -94,10 +114,6 @@ public class PaymentServiceImpl implements PaymentService {
             throw new PaymentException("Empty parameters from VNPay");
         }
 
-        //
-//        System.out.println("ALL PARAMS FROM VNPAY: " + parameters);
-        //
-
         String txnRef = parameters.get("vnp_TxnRef");
         if (txnRef == null) {
             throw new PaymentException("Missing vnp_TxnRef");
@@ -109,10 +125,6 @@ public class PaymentServiceImpl implements PaymentService {
         String secureHash = parameters.get("vnp_SecureHash");
         String generatedHash = generateVnpHash(parameters);
 
-        //doan moi
-//        System.out.println("VNP_SECURE_HASH: " + secureHash);
-//        System.out.println("GENERATED_HASH : " + generatedHash);
-        //
 
         if (!Objects.equals(secureHash, generatedHash)) {
             log.warn("hash mismatch {} vs {}", secureHash, generatedHash);
@@ -123,14 +135,30 @@ public class PaymentServiceImpl implements PaymentService {
         payment.setSecureHash(secureHash);
         payment.setDescription(parameters.get("vnp_OrderInfo"));
         payment.setCompletedAt(LocalDateTime.now());
+        payment.setGateway(PaymentGateway.VNPay);
 
         String responseCode = parameters.get("vnp_ResponseCode");
         if ("00".equals(responseCode)) {
             payment.setPaymentStatus(PaymentStatus.SUCCESS);
+
+            // ★ Nếu là thanh toán fine → set fine = PAID
+            if (payment.getPaymentType() == PaymentType.FINE
+                    && payment.getFineId() != null) {
+                fineRepository.findById(payment.getFineId()).ifPresent(fine -> {
+                    if (fine.getStatus() == FineStatus.PENDING) {
+                        fine.setStatus(FineStatus.PAID);
+                        fine.setPaidAt(LocalDateTime.now());
+                        fineRepository.save(fine);
+                        log.info("Fine #{} đã được set PAID sau VNPay callback thành công", fine.getId());
+                    }
+                });
+            }
         } else {
             payment.setPaymentStatus(PaymentStatus.FAILED);
             payment.setFailureReason(responseCode);
+            log.warn("VNPay payment failed: txnRef={}, responseCode={}", txnRef, responseCode);
         }
+
         Payment updated = paymentRepository.save(payment);
         return paymentMapper.toDTO(updated);
 

@@ -12,6 +12,8 @@ public class BookSearchRequest {
 
     private String searchTerm;
     private Long genreId;
+    private Long authorId;
+    private Long publisherId;
     private Boolean availableOnly;
     private Integer page = 0;
     private Integer size = 20;

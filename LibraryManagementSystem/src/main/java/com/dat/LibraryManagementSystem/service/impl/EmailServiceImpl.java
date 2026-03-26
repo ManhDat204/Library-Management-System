@@ -4,34 +4,32 @@ import com.dat.LibraryManagementSystem.service.EmailService;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.mail.MailException;
-import org.springframework.mail.MailSendException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
-
-@RequiredArgsConstructor
+@Slf4j
 @Service
+@RequiredArgsConstructor
 public class EmailServiceImpl implements EmailService {
-    @Autowired
-    private final JavaMailSender javaMailSender;
 
+    private final JavaMailSender mailSender;
 
+    @Async
+    @Override
     public void sendEmail(String to, String subject, String body) {
         try {
-            MimeMessage mimeMessage = javaMailSender.createMimeMessage();
-            MimeMessageHelper hepler = new MimeMessageHelper(mimeMessage, "utf-8");
-            hepler.setSubject(subject);
-            hepler.setText(body, true);
-            hepler.setTo(to);
-            javaMailSender.send(mimeMessage);
-        }catch(MailException e){
-            throw  new MailSendException(" Loi khi gui email");
-
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            helper.setTo(to);
+            helper.setSubject(subject);
+            helper.setText(body, true); // true = HTML
+            mailSender.send(message);
+            log.info("Email sent to {}: {}", to, subject);
         } catch (MessagingException e) {
-            throw new RuntimeException(e);
+            log.error("Failed to send email to {}: {}", to, e.getMessage());
         }
     }
 }

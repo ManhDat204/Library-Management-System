@@ -42,7 +42,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
         User user = userService.getCurrentUser();
         SubscriptionPlan plan = subscriptionPlanRepository
                 .findById(subscriptionDTO.getPlanId()).orElseThrow(
-                        ()-> new Exception("Plan khong ton tai")
+                        ()-> new Exception("Gói khong ton tai")
                 );
 
         //  Optional<sub>
@@ -50,6 +50,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
         Subscription subscription = subscriptionMapper.toEntity(subscriptionDTO, plan, user);
         subscription.initializeFromPlan();
         subscription.setIsActive(false);
+
         Subscription savedSubscription = subscriptionRepository.save(subscription);
         // create a payment record for the newly created subscription
         try {
@@ -60,11 +61,15 @@ public class SubscriptionServiceImpl implements SubscriptionService {
                     .paymentStatus(PaymentStatus.PENDING)
                     .amount(savedSubscription.getPrice())
                     .txnRef("SUBS" + savedSubscription.getId() + "-" + System.currentTimeMillis())
-                    .description("Subscription fee for plan " + plan.getName())
+                    .description("Phí đăng ký gói " + plan.getName())
                     .build();
             PaymentDTO savedPayment = paymentService.createPayment(paymentDto);
+
             // optionally include payment id in response notes so client can use it
-            subscriptionDTO.setNotes("paymentId=" + savedPayment.getId());
+            savedSubscription.setNotes("paymentId=" + savedPayment.getId());
+            savedSubscription = subscriptionRepository.save(savedSubscription);// thêm dòng này
+
+            return subscriptionMapper.toDTO(savedSubscription); // trả về sau khi đã có notes
         } catch (Exception e) {
             log.error("failed to create payment record", e);
         }
@@ -78,7 +83,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
 
         Subscription subscription = subscriptionRepository
                 .findActiveSubscriptionByUserId(user.getId(), LocalDate.now())
-                .orElseThrow(()-> new SubscriptionException("Khong co subscription active"));
+                .orElseThrow(()-> new SubscriptionException("Bạn chưa đăng ký gói để có thể mượn sách"));
         return subscriptionMapper.toDTO(subscription);
     }
 

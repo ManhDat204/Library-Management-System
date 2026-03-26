@@ -2,9 +2,11 @@ package com.dat.LibraryManagementSystem.controller;
 
 import com.dat.LibraryManagementSystem.exception.PaymentException;
 import com.dat.LibraryManagementSystem.exception.UserException;
+import com.dat.LibraryManagementSystem.model.User;
 import com.dat.LibraryManagementSystem.payload.dto.PaymentDTO;
 import com.dat.LibraryManagementSystem.payload.response.ApiResponse;
 import com.dat.LibraryManagementSystem.service.PaymentService;
+import com.dat.LibraryManagementSystem.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +26,7 @@ import java.util.Map;
 public class PaymentController {
 
     private final PaymentService paymentService;
+    private final UserService userService;
 
     @PostMapping
     public ResponseEntity<PaymentDTO> createPayment(@RequestBody @Valid PaymentDTO dto) throws PaymentException, UserException {
@@ -31,6 +34,18 @@ public class PaymentController {
         return ResponseEntity.ok(created);
     }
 
+    @GetMapping("/history")
+    public ResponseEntity<?> getMyHistory(
+            @RequestParam(defaultValue = "ALL") String type,
+            @RequestParam(defaultValue = "0")   int page,
+            @RequestParam(defaultValue = "20")  int size) throws UserException {
+
+        Long userId = userService.getCurrentUser().getId();
+
+        Pageable pageable = PageRequest.of(page, size);
+        Page<PaymentDTO> result = paymentService.getMyPayments(userId, type, pageable);
+        return ResponseEntity.ok(result);
+    }
 
     @GetMapping("/{id}")
     public ResponseEntity<PaymentDTO> getPayment(@PathVariable Long id) throws PaymentException {

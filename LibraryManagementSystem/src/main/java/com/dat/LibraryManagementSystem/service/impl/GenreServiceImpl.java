@@ -21,7 +21,6 @@ public class GenreServiceImpl implements GenreService {
 
     @Override
     public GenreDTO createGenre(GenreDTO genreDTO) {
-
         Genre genre = genreMapper.toEntity(genreDTO);
         Genre savedGenre = genreRepository.save(genre);
         return genreMapper.toDTO(savedGenre);
@@ -29,71 +28,64 @@ public class GenreServiceImpl implements GenreService {
 
     @Override
     public List<GenreDTO> getAllGenres() {
-        return genreRepository.findAll().stream()
+        // FIXED: findAllByOrderByDisplayOrder → findAllByOrderByNameAsc
+        return genreRepository.findAllByOrderByNameAsc().stream()
                 .map(genreMapper::toDTO)
                 .collect(Collectors.toList());
-
     }
 
     @Override
     public GenreDTO getGenreById(Long genreId) throws GenreException {
-        Genre genre = genreRepository.findById(genreId).orElseThrow(
-                () -> new GenreException("Thể loại không tồn tại"));
+        Genre genre = genreRepository.findById(genreId)
+                .orElseThrow(() -> new GenreException("Thể loại không tồn tại"));
         return genreMapper.toDTO(genre);
     }
 
     @Override
     public GenreDTO updateGenre(Long genreId, GenreDTO genreDTO) throws GenreException {
-        Genre existingGenre = genreRepository.findById(genreId).orElseThrow(
-                () -> new GenreException("Thể loại không tồn tại"));
+        Genre existingGenre = genreRepository.findById(genreId)
+                .orElseThrow(() -> new GenreException("Thể loại không tồn tại"));
         genreMapper.updateEntityFromDTO(genreDTO, existingGenre);
         Genre updatedGenre = genreRepository.save(existingGenre);
-
         return genreMapper.toDTO(updatedGenre);
     }
 
     @Override
     public void deleteGenre(Long genreId) throws GenreException {
-        Genre existingGenre = genreRepository.findById(genreId).orElseThrow(
-                () -> new GenreException("Thể loại không tồn tại"));
+        Genre existingGenre = genreRepository.findById(genreId)
+                .orElseThrow(() -> new GenreException("Thể loại không tồn tại"));
         genreRepository.delete(existingGenre);
     }
 
     @Override
     public void hardDeleteGenre(Long genreId) throws GenreException {
-        Genre existingGenre = genreRepository.findById(genreId).orElseThrow(
-                () -> new GenreException("Thể loại không tồn tại"));
+        Genre existingGenre = genreRepository.findById(genreId)
+                .orElseThrow(() -> new GenreException("Thể loại không tồn tại"));
         genreRepository.delete(existingGenre);
     }
 
     @Override
     public List<GenreDTO> getAllActiveGenresWithSubGenres() {
+        // FIXED: OrderByDisplayOrderAsc → OrderByNameAsc
         List<Genre> topLevelGenres = genreRepository
-                .findByParentGenreIsNullAndActiveTrueOrderByDisplayOrderAsc();
-
+                .findByParentGenreIsNullAndActiveTrueOrderByNameAsc();
         return genreMapper.toDTOList(topLevelGenres);
     }
 
     @Override
     public List<GenreDTO> getSubGenres(Long genreId) {
-        return genreRepository.findByParentGenreIdAndActiveTrueOrderByDisplayOrderAsc(genreId)
+        // FIXED: OrderByDisplayOrderAsc → OrderByNameAsc
+        return genreRepository.findByParentGenreIdAndActiveTrueOrderByNameAsc(genreId)
                 .stream()
                 .map(genreMapper::toDTO)
                 .collect(Collectors.toList());
     }
 
-    // @Override
-    // public List<GenreDTO> getTopLeverGenresWithSubGenres() {
-    // List<Genre> topLevelGenre =genreRepository
-    // .findByParentGenreIsNullAndActiveTrueOrderByDisplayOrderAsc();
-    //
-    // return genreMapper.toDTOList(topLevelGenre);
-    // }
-
     @Override
     public List<GenreDTO> getTopLevelGenres() {
+        // FIXED: OrderByDisplayOrderAsc → OrderByNameAsc
         List<Genre> topLevelGenres = genreRepository
-                .findByParentGenreIsNullAndActiveTrueOrderByDisplayOrderAsc();
+                .findByParentGenreIsNullAndActiveTrueOrderByNameAsc();
         return genreMapper.toDTOList(topLevelGenres);
     }
 

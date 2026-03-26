@@ -18,17 +18,16 @@ import java.util.List;
 public class GenreDTO {
     private Long id;
 
-    @NotBlank(message = "Genre code is mandatoration")
+    @NotBlank(message = "Ma the loai la bat buoc")
     private String code;
 
-    @NotBlank(message = "Genre name is mandatoration")
+    @NotBlank(message = "Ten the loai la bat buoc")
     private String name;
 
     @Size(max = 500, message = "khong duoc qua 500 ky tu")
     private String description;
 
-    @Min(value = 0, message= "display order cannot be nagetive")
-    private Integer displayOrder =0;
+
 
     private Boolean active;
 

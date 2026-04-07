@@ -37,4 +37,6 @@ public interface GenreService {
 
     long getBookCountByGenres(Long genreId);
 
+    List<GenreDTO> getTopBorrowedGenres(int limit);
+
 }

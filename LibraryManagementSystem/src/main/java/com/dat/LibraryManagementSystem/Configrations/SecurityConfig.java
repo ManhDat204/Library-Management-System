@@ -24,38 +24,36 @@ import java.util.Collections;
 public class SecurityConfig {
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception{
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
                 .sessionManagement(management -> management.sessionCreationPolicy(
-                        SessionCreationPolicy.STATELESS
-                ))
-                .authorizeHttpRequests(Authorize ->Authorize
-                                .requestMatchers("/api/payments/vnpay-return").permitAll()
-                                .requestMatchers("/api/subscription-plans/admin/**").hasRole("ADMIN")
-                                .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                                .requestMatchers("/api/books/**").permitAll()
-                                .requestMatchers("/api/genres/**").permitAll()
-                                .requestMatchers("/api/wishlist/**").hasRole("USER")
-                                .requestMatchers("/api/**").authenticated()
-                                .anyRequest().permitAll()
+                        SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(Authorize -> Authorize
+                        .requestMatchers("/api/payments/vnpay-return").permitAll()
+                        .requestMatchers("/api/subscription-plans/admin/**").hasAnyRole("ADMIN", "STAFF")
+                        .requestMatchers("/api/admin/**").hasAnyRole("ADMIN", "STAFF")
+                        .requestMatchers("/api/books/**").permitAll()
+                        .requestMatchers("/api/genres/**").permitAll()
+                        .requestMatchers("/api/wishlist/**").hasRole("USER")
+                        .requestMatchers("/api/**").authenticated()
+                        .anyRequest().permitAll()
 
-
-                        ).addFilterBefore(new JwtValidator(), BasicAuthenticationFilter.class )
+                ).addFilterBefore(new JwtValidator(), BasicAuthenticationFilter.class)
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .build();
     }
-    public CorsConfigurationSource corsConfigurationSource(){
+
+    public CorsConfigurationSource corsConfigurationSource() {
         return new CorsConfigurationSource() {
             @Override
-            public  CorsConfiguration getCorsConfiguration(HttpServletRequest request) {
+            public CorsConfiguration getCorsConfiguration(HttpServletRequest request) {
                 CorsConfiguration cfg = new CorsConfiguration();
                 cfg.setAllowCredentials(true);
                 cfg.setAllowedOrigins(
                         Arrays.asList(
                                 "http://localhost:5173",
-                                "http://dat.com"
-                        )
+                                "http://dat.com")
 
                 );
                 cfg.setAllowedMethods(Collections.singletonList("*"));
@@ -69,9 +67,7 @@ public class SecurityConfig {
     }
 
     @Bean
-    public PasswordEncoder passwordEncoder(){
+    public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 }
-
-

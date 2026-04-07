@@ -14,10 +14,12 @@ public class BookSearchRequest {
     private Long genreId;
     private Long authorId;
     private Long publisherId;
+    private Double minPrice;
+    private Double maxPrice;
     private Boolean availableOnly;
     private Integer page = 0;
     private Integer size = 20;
-    private String sortBy="createdAt";
-    private String sortDirection="DESC";
+    private String sortBy = "createdAt";
+    private String sortDirection = "DESC";
 
 }

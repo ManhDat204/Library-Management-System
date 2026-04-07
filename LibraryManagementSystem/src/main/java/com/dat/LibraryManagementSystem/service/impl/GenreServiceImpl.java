@@ -7,6 +7,8 @@ import com.dat.LibraryManagementSystem.payload.dto.GenreDTO;
 import com.dat.LibraryManagementSystem.repository.GenreRepository;
 import com.dat.LibraryManagementSystem.service.GenreService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -87,6 +89,20 @@ public class GenreServiceImpl implements GenreService {
         List<Genre> topLevelGenres = genreRepository
                 .findByParentGenreIsNullAndActiveTrueOrderByNameAsc();
         return genreMapper.toDTOList(topLevelGenres);
+    }
+
+    @Override
+    public List<GenreDTO> getTopBorrowedGenres(int limit) {
+        List<Object[]> results = genreRepository.findTopBorrowedGenres(limit);
+        return results.stream()
+                .map(row -> {
+                    GenreDTO dto = new GenreDTO();
+                    dto.setId(((Number) row[0]).longValue());
+                    dto.setName((String) row[1]);
+                    dto.setBorrowCount(((Number) row[2]).longValue());
+                    return dto;
+                })
+                .collect(Collectors.toList());
     }
 
     @Override

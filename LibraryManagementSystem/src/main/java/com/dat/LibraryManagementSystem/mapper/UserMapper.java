@@ -19,9 +19,12 @@ public class UserMapper {
         userDTO.setId(user.getId());
         userDTO.setEmail(user.getEmail());
         userDTO.setFullName(user.getFullName());
+        userDTO.setProfileImage(user.getProfileImage());
         userDTO.setPhone(user.getPhone());
+        userDTO.setGender(user.getGender());
         userDTO.setLastLogin(user.getLastLogin());
         userDTO.setRole(user.getRole());
+        userDTO.setActive(user.getActive());
 
         return userDTO;
     }
@@ -45,8 +48,10 @@ public class UserMapper {
         createdUser.setCreatedAt(LocalDateTime.now());
         createdUser.setPhone(userDTO.getPhone());
         createdUser.setFullName(userDTO.getFullName());
+        createdUser.setProfileImage(userDTO.getProfileImage());
+        createdUser.setGender(userDTO.getGender());
         createdUser.setRole(userDTO.getRole());
+        createdUser.setActive(userDTO.getActive() != null ? userDTO.getActive() : true);
         return createdUser;
-        //map genre
-    }
+    } 
 }

@@ -69,7 +69,7 @@ public class Book {
     @Column(nullable = false)
     private LocalDateTime updatedAt;
 
-    @AssertTrue(message ="So ban sach co san khong the lon hon tong so ban")
+    @AssertTrue(message ="Số sách có sănx không thể lớn hơn tổng số sách")
     public boolean  isAvailableCopiesValid(){
         if(totalCopies==null || availableCopies==null){
             return true;

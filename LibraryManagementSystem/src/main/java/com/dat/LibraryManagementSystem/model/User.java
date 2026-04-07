@@ -1,8 +1,8 @@
 package com.dat.LibraryManagementSystem.model;
 
-
 import com.dat.LibraryManagementSystem.domain.AuthProvider;
 import com.dat.LibraryManagementSystem.domain.UserRole;
+import com.dat.LibraryManagementSystem.domain.Gender;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -27,6 +27,10 @@ public class User {
 
     private String phone;
 
+    @Enumerated(EnumType.STRING)
+    private Gender gender;
+
+    @Enumerated(EnumType.STRING)
     private UserRole role;
 
     private AuthProvider authProvider = AuthProvider.LOCAL;
@@ -36,6 +40,8 @@ public class User {
     private String profileImage;
 
     private String password;
+
+    private Boolean active;
 
     private LocalDateTime lastLogin;
 

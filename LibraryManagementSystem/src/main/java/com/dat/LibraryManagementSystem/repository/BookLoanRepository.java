@@ -50,6 +50,14 @@ public interface BookLoanRepository extends JpaRepository<BookLoan, Long> {
             Pageable pageable
     );
 
+    @Query("SELECT bl.book.id, COUNT(bl.id) FROM BookLoan bl JOIN bl.book b WHERE b.active = true " +
+        "GROUP BY bl.book.id ORDER BY COUNT(bl.id) DESC")
+    List<Object[]> countLoanGroupByBook(Pageable pageable);
+
+    @Query("SELECT b.genre.id, COUNT(bl.id) FROM BookLoan bl JOIN bl.book b " +
+    "WHERE b.active = true AND b.genre.active = true GROUP BY b.genre.id ORDER BY COUNT(bl.id) DESC")
+    List<Object[]> countLoanGroupByGenre(Pageable pageable);
+
     boolean existsByUserIdAndBookIdAndStatus(Long userId, Long bookId, BookLoanStatus status);
 }
 

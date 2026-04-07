@@ -50,6 +50,7 @@ public class BookLoanServiceImpl implements BookLoanService {
     private final ReservationRepository reservationRepository;
     private final EmailService emailService;
     private  final AddressRepository addressRepository;
+    private final WalletService walletService;
     private static final int HOURS_TO_PICKUP = 24;
 
     @Override
@@ -109,6 +110,16 @@ public class BookLoanServiceImpl implements BookLoanService {
         if(overdueCount>0) {
             throw new Exception("Lan tra dau tien cho viec qua han");
         }
+        BigDecimal bookPrice = book.getPrice() != null ? book.getPrice() : BigDecimal.ZERO;
+        if (bookPrice.compareTo(BigDecimal.ZERO) > 0) {
+            if (!walletService.hasSufficientBalance(userId, bookPrice)) {
+                throw new Exception(
+                        "Số dư ví không đủ để mượn sách. " +
+//                                "Cần: " + bookPrice + " VNĐ. " +
+                                "Vui lòng nạp thêm tiền vào ví."
+                );
+            }
+        }
 
         Address defaultAddress = addressRepository.findByUserIdAndIsDefaultTrue(user.getId())
                 .orElse(null);
@@ -133,6 +144,13 @@ public class BookLoanServiceImpl implements BookLoanService {
 
         //save book loan
         BookLoan savedBookLoan = bookLoanRepository.save(bookLoan);
+        // khoa tien cọc
+        if (bookPrice.compareTo(BigDecimal.ZERO) > 0) {
+            walletService.lockDeposit(savedBookLoan);
+            log.info("[WALLET] Đã khoá {} VNĐ đặt cọc cho user {} mượn sách '{}'",
+                    bookPrice, userId, book.getTitle());
+        }
+
 
         return bookLoanMapper.toDTO(savedBookLoan);
 
@@ -142,7 +160,7 @@ public class BookLoanServiceImpl implements BookLoanService {
         User currentUser = userService.getCurrentUser();
 
         BookLoan bookLoan = bookLoanRepository.findById(loanId)
-                .orElseThrow(() -> new Exception("Không tìm thấy đơn mượn #" + loanId));
+                .orElseThrow(() -> new Exception("Không tìm thấy đơn mượn " + loanId));
 
         // Kiểm tra đúng chủ sở hữu đơn
         if (!bookLoan.getUser().getId().equals(currentUser.getId())) {
@@ -263,7 +281,7 @@ public class BookLoanServiceImpl implements BookLoanService {
 
         // Chỉ duyệt khi đang PENDING_RETURN
         if (bookLoan.getStatus() != BookLoanStatus.PENDING_RETURN) {
-            throw new BookException("Book loan không ở trạng thái chờ duyệt");
+            throw new BookException("Mượn sách không ở trạng thái chờ duyệt");
         }
 
         bookLoan.setReturnDate(LocalDate.now());
@@ -309,6 +327,7 @@ public class BookLoanServiceImpl implements BookLoanService {
             book.setAvailableCopies(book.getAvailableCopies() + 1);
             bookRepository.save(book);
             notifyNextReservation(book);
+            walletService.unlockDeposit(bookLoan);
         }
 
         BookLoan saved = bookLoanRepository.save(bookLoan);

@@ -34,6 +34,7 @@ public class BookDTO {
     private String genreName;
     private String genreCode;
 
+    private Long totalLoans;
 
 
     private Long publisherId;

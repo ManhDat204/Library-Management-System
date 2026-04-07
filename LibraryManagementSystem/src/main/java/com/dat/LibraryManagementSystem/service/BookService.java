@@ -25,6 +25,7 @@ public interface BookService {
     PageResponse<BookDTO> searchBookWithFilters(BookSearchRequest searchRequest);
     Long getTotalActiveBooks();
     Long getTotalAvailableBooks();
+    List<BookDTO> getTopBorrowedBooks(int limit);
 
 
 

@@ -50,16 +50,15 @@ public class BookLoanController {
     return ResponseEntity.ok(bookLoan);
 }
 
-    // User bấm "Đã nhận đơn"
+
     @PatchMapping("/my/{id}/confirm-received")
     public ResponseEntity<BookLoanDTO> confirmReceived(
             @PathVariable Long id) throws Exception {
         return ResponseEntity.ok(bookLoanService.confirmReceived(id));
     }
 
-// Thêm vào admin controller (hoặc cùng file, thêm @PreAuthorize):
 
-    // Admin bấm "Giao hàng"
+
     @PatchMapping("/{id}/shipping")
     public ResponseEntity<BookLoanDTO> markAsShipping(
             @PathVariable Long id) throws Exception {
@@ -105,7 +104,7 @@ public class BookLoanController {
         return ResponseEntity.ok(bookLoan);
     }
 
-    // Admin duyệt yêu cầu trả sách
+
     @PostMapping("/admin/approve-return")
     public ResponseEntity<?> approveReturn(
             @Valid @RequestBody ApproveReturnRequest request) throws Exception {

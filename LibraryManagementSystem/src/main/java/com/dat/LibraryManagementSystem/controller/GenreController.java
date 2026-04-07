@@ -34,11 +34,7 @@ public class GenreController {
     }
 
 
-    @GetMapping("/{genreId}")
-    public ResponseEntity<?> getGenreById(@PathVariable("genreId") Long genreId) throws GenreException {
-        GenreDTO genres = genreService.getGenreById(genreId);
-        return ResponseEntity.ok(genres);
-    }
+
 
     @PutMapping("/{genreId}")
     public ResponseEntity<?> updateGenre(@PathVariable("genreId") Long genreId, @RequestBody GenreDTO genre)
@@ -70,6 +66,11 @@ public class GenreController {
         return ResponseEntity.ok(genres);
     }
 
+    @GetMapping("/top-borrowed")
+    public ResponseEntity<List<GenreDTO>> getTopBorrowedGenres(
+            @RequestParam(defaultValue = "5") int limit) {
+        return ResponseEntity.ok(genreService.getTopBorrowedGenres(limit));
+    }
     @GetMapping("/count")
     public ResponseEntity<?> getTotalActiveGenres() {
         Long genres = genreService.getTotalActiveGenres();
@@ -81,6 +82,13 @@ public class GenreController {
         Long count = genreService.getBookCountByGenres(id);
         return ResponseEntity.ok(count);
     }
+
+    @GetMapping("/{genreId}")
+    public ResponseEntity<?> getGenreById(@PathVariable("genreId") Long genreId) throws GenreException {
+        GenreDTO genres = genreService.getGenreById(genreId);
+        return ResponseEntity.ok(genres);
+    }
+
 
 
 }

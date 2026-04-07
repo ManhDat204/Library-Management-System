@@ -27,6 +27,8 @@ public class GenreDTO {
     @Size(max = 500, message = "khong duoc qua 500 ky tu")
     private String description;
 
+    private Long borrowCount;
+
 
 
     private Boolean active;

@@ -19,12 +19,15 @@ import com.dat.LibraryManagementSystem.repository.PaymentRepository;
 import com.dat.LibraryManagementSystem.repository.SubscriptionRepository;
 import com.dat.LibraryManagementSystem.repository.UserRepository;
 import com.dat.LibraryManagementSystem.service.PaymentService;
+import com.dat.LibraryManagementSystem.service.WalletService;
 import com.nimbusds.openid.connect.sdk.UserInfoResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -45,6 +48,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final UserRepository userRepository;
     private final SubscriptionRepository subscriptionRepository;
     private final FineRepository fineRepository;
+    private final WalletService walletService;
 
     @Override
     public Page<PaymentDTO> getMyPayments(Long userId, String type, Pageable pageable) {
@@ -109,6 +113,7 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     @Override
+    @Transactional
     public PaymentDTO handleVnPayReturn(Map<String, String> parameters) throws PaymentException {
         if (parameters == null || parameters.isEmpty()) {
             throw new PaymentException("Empty parameters from VNPay");
@@ -121,6 +126,12 @@ public class PaymentServiceImpl implements PaymentService {
         Payment payment = paymentRepository.findByTxnRef(txnRef)
                 .orElseThrow(() -> new PaymentException("Payment not found for txnRef " + txnRef));
 
+        if (payment.getPaymentStatus() == PaymentStatus.SUCCESS
+                || payment.getPaymentStatus() == PaymentStatus.FAILED) {
+            log.info("[VNPAY] Payment {} đã được xử lý rồi ({}), bỏ qua",
+                    txnRef, payment.getPaymentStatus());
+            return paymentMapper.toDTO(payment);
+        }
         // verify secure hash
         String secureHash = parameters.get("vnp_SecureHash");
         String generatedHash = generateVnpHash(parameters);
@@ -141,7 +152,7 @@ public class PaymentServiceImpl implements PaymentService {
         if ("00".equals(responseCode)) {
             payment.setPaymentStatus(PaymentStatus.SUCCESS);
 
-            // ★ Nếu là thanh toán fine → set fine = PAID
+            // thanh toan fine set pending-> paid
             if (payment.getPaymentType() == PaymentType.FINE
                     && payment.getFineId() != null) {
                 fineRepository.findById(payment.getFineId()).ifPresent(fine -> {
@@ -152,6 +163,15 @@ public class PaymentServiceImpl implements PaymentService {
                         log.info("Fine #{} đã được set PAID sau VNPay callback thành công", fine.getId());
                     }
                 });
+            }
+            if (payment.getPaymentType() == PaymentType.WALLET_DEPOSIT) {
+                walletService.deposit(
+                        payment.getUser().getId(),
+                        BigDecimal.valueOf(payment.getAmount()),
+                        payment
+                );
+                log.info("[WALLET] Đã cộng {} VND vào ví user {}",
+                        payment.getAmount(), payment.getUser().getId());
             }
         } else {
             payment.setPaymentStatus(PaymentStatus.FAILED);

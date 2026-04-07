@@ -18,7 +18,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-
 import java.util.List;
 
 @RestController
@@ -26,7 +25,6 @@ import java.util.List;
 @RequestMapping("/api/books")
 public class BookController {
     private final BookService bookService;
-
 
     @PostMapping("/admin")
     public ResponseEntity<BookDTO> createBook(
@@ -49,20 +47,20 @@ public class BookController {
         return ResponseEntity.ok(book);
     }
 
-//    @GetMapping("/isbn/{isbn}")
-//    public ResponseEntity<BookDTO> getBookByIsbn(@PathVariable String isbn)
-//            throws BookException {
-//        BookDTO book = bookService.getBookByISBN(isbn);
-//        return ResponseEntity.ok(book);
-//    }
+    // @GetMapping("/isbn/{isbn}")
+    // public ResponseEntity<BookDTO> getBookByIsbn(@PathVariable String isbn)
+    // throws BookException {
+    // BookDTO book = bookService.getBookByISBN(isbn);
+    // return ResponseEntity.ok(book);
+    // }
 
     @PutMapping("/{id}")
     public ResponseEntity<BookDTO> updateBook(
             @PathVariable Long id,
             @RequestBody BookDTO bookDTO) throws BookException {
 
-            BookDTO updatedBook = bookService.updateBookById(id,bookDTO);
-            return ResponseEntity.ok(updatedBook);
+        BookDTO updatedBook = bookService.updateBookById(id, bookDTO);
+        return ResponseEntity.ok(updatedBook);
 
     }
 
@@ -80,9 +78,20 @@ public class BookController {
         return ResponseEntity.ok(new ApiResponse("Xoa sach thanh cong - xoa cung", true));
     }
 
+    @GetMapping("/top-borrowed")
+    public ResponseEntity<List<BookDTO>> getTopBorrowedBooks(
+            @RequestParam(defaultValue = "5") int limit) {
+        List<BookDTO> books = bookService.getTopBorrowedBooks(limit);
+        return ResponseEntity.ok(books);
+    }
+
     @GetMapping
     public ResponseEntity<PageResponse<BookDTO>> searchBooks(
             @RequestParam(required = false) Long genreId,
+            @RequestParam(required = false) Long authorId,
+            @RequestParam(required = false) Long publisherId,
+            @RequestParam(required = false) Double minPrice,
+            @RequestParam(required = false) Double maxPrice,
             @RequestParam(required = false) boolean availableOnly,
             @RequestParam(defaultValue = "true") boolean activeOnly,
             @RequestParam(defaultValue = "0") int page,
@@ -92,6 +101,10 @@ public class BookController {
 
         BookSearchRequest searchRequest = new BookSearchRequest();
         searchRequest.setGenreId(genreId);
+        searchRequest.setAuthorId(authorId);
+        searchRequest.setPublisherId(publisherId);
+        searchRequest.setMinPrice(minPrice);
+        searchRequest.setMaxPrice(maxPrice);
         searchRequest.setAvailableOnly(availableOnly);
         searchRequest.setPage(page);
         searchRequest.setSize(size);
@@ -101,19 +114,17 @@ public class BookController {
         PageResponse<BookDTO> books = bookService.searchBookWithFilters(searchRequest);
         return ResponseEntity.ok(books);
 
-
     }
-
 
     @PostMapping("/search")
     public ResponseEntity<PageResponse<BookDTO>> advancedSearch(
-            @RequestBody BookSearchRequest searchRequest)
-    {
+            @RequestBody BookSearchRequest searchRequest) {
         PageResponse<BookDTO> books = bookService.searchBookWithFilters(searchRequest);
-        return  ResponseEntity.ok(books);
+        return ResponseEntity.ok(books);
     }
+
     @GetMapping("/stats")
-    public ResponseEntity<BookStatsResponse> getBookStats(){
+    public ResponseEntity<BookStatsResponse> getBookStats() {
         long totalActive = bookService.getTotalActiveBooks();
         long totalAvailable = bookService.getTotalAvailableBooks();
         BookStatsResponse stats = new BookStatsResponse(totalActive, totalAvailable);
@@ -121,7 +132,7 @@ public class BookController {
 
     }
 
-    public static class BookStatsResponse{
+    public static class BookStatsResponse {
         public long totalActiveBooks;
         public long totalAvailableBooks;
 
@@ -132,4 +143,3 @@ public class BookController {
     }
 
 }
-

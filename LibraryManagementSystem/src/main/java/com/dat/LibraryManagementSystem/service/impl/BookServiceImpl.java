@@ -25,28 +25,29 @@ public class BookServiceImpl implements BookService {
 
     private final BookRepository bookRepository;
     private final BookMapper bookMapper;
+
     @Override
     public BookDTO createBook(BookDTO bookDTO) throws BookException {
-        if(bookRepository.existsByIsbn(bookDTO.getIsbn())){
-            throw new BookException("Sach voi ma isbn "+ bookDTO.getIsbn() + " da ton tai");
+        if (bookRepository.existsByIsbn(bookDTO.getIsbn())) {
+            throw new BookException("Sach voi ma isbn " + bookDTO.getIsbn() + " da ton tai");
         }
 
-        Book book= bookMapper.toEntity(bookDTO);
+        Book book = bookMapper.toEntity(bookDTO);
         book.isAvailableCopiesValid();
 
         Book savedbook = bookRepository.save(book);
         return bookMapper.toDTO(savedbook);
     }
 
-//    @Override
-//    public List<BookDTO> createBooksBulk() {
-//        return List.of();
-//    }
+    // @Override
+    // public List<BookDTO> createBooksBulk() {
+    // return List.of();
+    // }
 
     @Override
     public List<BookDTO> createBooksBulk(List<BookDTO> bookDTOs) throws BookException {
         List<BookDTO> createdBooks = new ArrayList<>();
-        for(BookDTO bookDTO:bookDTOs){
+        for (BookDTO bookDTO : bookDTOs) {
             BookDTO book = createBook(bookDTO);
             createdBooks.add(book);
         }
@@ -56,14 +57,14 @@ public class BookServiceImpl implements BookService {
     @Override
     public BookDTO getBookById(Long bookId) throws BookException {
         Book book = bookRepository.findById(bookId)
-                .orElseThrow(()->new BookException("Book khong ton tai"));
+                .orElseThrow(() -> new BookException("Book khong ton tai"));
         return bookMapper.toDTO(book);
     }
 
     @Override
     public BookDTO getBookByISBN(String isbn) throws BookException {
         Book book = bookRepository.findByIsbn(isbn)
-                .orElseThrow(()->new BookException("Book khong ton tai"));
+                .orElseThrow(() -> new BookException("Book khong ton tai"));
         return bookMapper.toDTO(book);
 
     }
@@ -71,7 +72,7 @@ public class BookServiceImpl implements BookService {
     @Override
     public BookDTO updateBookById(Long bookId, BookDTO bookDTO) throws BookException {
         Book existingBook = bookRepository.findById(bookId)
-                .orElseThrow(()->new BookException("Book khong ton tai"));
+                .orElseThrow(() -> new BookException("Book khong ton tai"));
 
         bookMapper.updateEntityFromDTO(bookDTO, existingBook);
         existingBook.isAvailableCopiesValid();
@@ -83,7 +84,7 @@ public class BookServiceImpl implements BookService {
     @Override
     public void deleteBook(Long bookId) throws BookException {
         Book existingBook = bookRepository.findById(bookId)
-                .orElseThrow(()->new BookException("Book khong ton tai"));
+                .orElseThrow(() -> new BookException("Book khong ton tai"));
         existingBook.setActive(false);
         bookRepository.save(existingBook);
 
@@ -92,7 +93,7 @@ public class BookServiceImpl implements BookService {
     @Override
     public void deleteHardBook(Long bookId) throws BookException {
         Book existingBook = bookRepository.findById(bookId)
-                .orElseThrow(()->new BookException("Book khong ton tai"));
+                .orElseThrow(() -> new BookException("Book khong ton tai"));
         existingBook.setActive(false);
         bookRepository.delete(existingBook);
     }
@@ -103,15 +104,17 @@ public class BookServiceImpl implements BookService {
                 searchRequest.getSize(),
                 searchRequest.getSortBy(),
                 searchRequest.getSortDirection());
-        Page<Book> bookPage =  bookRepository.searchBookWithFilters(
+        Page<Book> bookPage = bookRepository.searchBookWithFilters(
                 searchRequest.getSearchTerm(),
                 searchRequest.getGenreId(),
                 searchRequest.getAuthorId(),
                 searchRequest.getPublisherId(),
+                searchRequest.getMinPrice(),
+                searchRequest.getMaxPrice(),
                 searchRequest.getAvailableOnly(),
                 pageable
 
-                );
+        );
         return convertToPageResponse(bookPage);
     }
 
@@ -127,15 +130,29 @@ public class BookServiceImpl implements BookService {
         return bookRepository.countAvailableBooks();
     }
 
-    private Pageable createPageable(int page , int size , String sortBy, String sortDirection){
-        size = Math.min(size, 10);
-        size = Math.max(size, 1);
-        Sort sort= sortDirection.equalsIgnoreCase("ASC")
-                ?Sort.by(sortBy).ascending():Sort.by(sortBy).descending();
-                return PageRequest.of(page, size, sort);
+    @Override
+    public List<BookDTO> getTopBorrowedBooks(int limit) {
+        List<Book> books = bookRepository.findTopBorrowedBooks(PageRequest.of(0, limit));
+        return books.stream()
+                .map(book -> {
+                    BookDTO dto = bookMapper.toDTO(book);
+                    dto.setTotalLoans(bookRepository.countLoansByBookId(book.getId()));
+                    return dto;
+                })
+                .collect(Collectors.toList());
     }
-    private PageResponse<BookDTO> convertToPageResponse(Page<Book> books){
-        List<BookDTO> bookDTOS =books.getContent()
+
+    private Pageable createPageable(int page, int size, String sortBy, String sortDirection) {
+        size = Math.min(size, 20);
+        size = Math.max(size, 1);
+        Sort sort = sortDirection.equalsIgnoreCase("ASC")
+                ? Sort.by(sortBy).ascending()
+                : Sort.by(sortBy).descending();
+        return PageRequest.of(page, size, sort);
+    }
+
+    private PageResponse<BookDTO> convertToPageResponse(Page<Book> books) {
+        List<BookDTO> bookDTOS = books.getContent()
                 .stream()
                 .map(bookMapper::toDTO)
                 .collect(Collectors.toList());
@@ -147,7 +164,6 @@ public class BookServiceImpl implements BookService {
                 books.getTotalPages(),
                 books.isLast(),
                 books.isFirst(),
-                books.isEmpty()
-        );
+                books.isEmpty());
     }
 }

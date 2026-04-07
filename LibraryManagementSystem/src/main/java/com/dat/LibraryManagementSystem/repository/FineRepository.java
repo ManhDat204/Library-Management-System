@@ -22,12 +22,8 @@ public interface FineRepository extends JpaRepository<Fine, Long>, JpaSpecificat
 
     boolean existsByBookLoanIdAndStatus(Long loanId, FineStatus status);
 
-    @Query("""
-        SELECT SUM(f.amount)
-        FROM Fine f
-        WHERE f.status = :status
-        AND (:userId IS NULL OR f.user.id = :userId)
-    """)
+    @Query(" SELECT SUM(f.amount) FROM Fine f WHERE f.status = :status " +
+        "AND (:userId IS NULL OR f.user.id = :userId)")
     BigDecimal sumAmountByStatusAndUserId(FineStatus status, Long userId);
 
     Page<Fine> findByStatus(FineStatus status, Pageable pageable);

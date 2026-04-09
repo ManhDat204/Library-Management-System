@@ -1,14 +1,21 @@
-import { Navigate } from 'react-router-dom';
+import { Navigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
-const ProtectedRoute = ({ children }) => {
-  const token = localStorage.getItem('token');
+const ProtectedRoute = ({ children, role }) => {
+  const { user } = useAuth();
 
-  // Nếu không có token, chuyển về trang login
-  if (!token) {
-    return <Navigate to="/login" replace />;
+  if (!user || !user.token) {
+    return <Navigate to="/home" />;
   }
 
-  // Nếu có token, hiển thị component con
+  if (role === "ROLE_ADMIN" && user.role !== "ROLE_ADMIN" && user.role !== "ROLE_STAFF") {
+    return <Navigate to="/home" />;
+  }
+
+  if (role && role !== "ROLE_ADMIN" && user.role !== role) {
+    return <Navigate to="/home" />;
+  }
+
   return children;
 };
 

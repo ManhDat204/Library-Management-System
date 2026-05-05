@@ -2,6 +2,9 @@ package com.dat.LibraryManagementSystem.service;
 import com.dat.LibraryManagementSystem.exception.GenreException;
 import com.dat.LibraryManagementSystem.payload.dto.GenreDTO;
 import java.util.List;
+
+import com.dat.LibraryManagementSystem.payload.request.GenreSearchRequest;
+import com.dat.LibraryManagementSystem.payload.response.PageResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -38,5 +41,7 @@ public interface GenreService {
     long getBookCountByGenres(Long genreId);
 
     List<GenreDTO> getTopBorrowedGenres(int limit);
+
+    PageResponse<GenreDTO> searchGenres(GenreSearchRequest request);
 
 }

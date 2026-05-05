@@ -53,4 +53,6 @@ public class Fine {
 
     @UpdateTimestamp
     private LocalDateTime updatedAt;
+
+    private LocalDateTime deletedAt;
 }

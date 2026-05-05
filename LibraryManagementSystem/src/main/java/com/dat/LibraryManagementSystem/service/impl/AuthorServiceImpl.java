@@ -2,8 +2,10 @@ package com.dat.LibraryManagementSystem.service.impl;
 
 import com.dat.LibraryManagementSystem.mapper.AuthorMapper;
 import com.dat.LibraryManagementSystem.model.Author;
+import com.dat.LibraryManagementSystem.model.Book;
 import com.dat.LibraryManagementSystem.payload.dto.AuthorDTO;
 import com.dat.LibraryManagementSystem.repository.AuthorRepository;
+import com.dat.LibraryManagementSystem.repository.BookRepository;
 import com.dat.LibraryManagementSystem.service.AuthorService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -24,42 +26,36 @@ public class AuthorServiceImpl implements AuthorService {
 
     private final AuthorRepository authorRepository;
     private final AuthorMapper authorMapper;
+    private final BookRepository bookRepository;
 
     @Override
     public AuthorDTO createAuthor(AuthorDTO dto) {
 
         Author author = authorMapper.toEntity(dto);
-
         Author savedAuthor = authorRepository.save(author);
-
         return authorMapper.toDTO(savedAuthor);
     }
 
     @Override
     public AuthorDTO updateAuthor(Long id, AuthorDTO dto) throws Exception {
 
-        Author author = authorRepository.findById(id)
+        Author author = authorRepository.findByIdAndDeletedFalse(id)
                 .orElseThrow(() -> new Exception("Author not found"));
-
         authorMapper.updateEntityFromDTO(dto, author);
-
         Author updatedAuthor = authorRepository.save(author);
-
         return authorMapper.toDTO(updatedAuthor);
     }
 
     @Override
     public AuthorDTO getAuthorById(Long id) throws Exception {
 
-        Author author = authorRepository.findById(id)
+        Author author = authorRepository.findByIdAndDeletedFalse(id)
                 .orElseThrow(() -> new Exception("Author not found"));
-
         return authorMapper.toDTO(author);
     }
 
     @Override
     public List<AuthorDTO> getAllAuthors() {
-
         return authorRepository.findAll()
                 .stream()
                 .map(authorMapper::toDTO)
@@ -72,8 +68,21 @@ public class AuthorServiceImpl implements AuthorService {
         Author author = authorRepository.findById(id)
                 .orElseThrow(() -> new Exception("Author not found"));
 
+
         authorRepository.delete(author);
     }
+
+    @Override
+    public void softDeleteAuthor(Long id) throws Exception {
+
+        Author author = authorRepository.findByIdAndDeletedFalse(id)
+                .orElseThrow(() -> new Exception("Author not found"));
+
+        author.setDeleted(true);
+        authorRepository.save(author);
+    }
+
+
     @Override
     public PageResponse<AuthorDTO> searchAuthors(AuthorSearchRequest request) {
         Sort sort = Sort.by(

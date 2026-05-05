@@ -23,33 +23,31 @@ public class BookLoanController {
 
     @PostMapping("/checkout")
     public ResponseEntity<?> checkoutBook(
-            @Valid @RequestBody CheckoutRequest checkoutRequest) throws Exception{
-            BookLoanDTO bookLoan = bookLoanService.checkoutBook(checkoutRequest);
-            return new ResponseEntity<>(bookLoan, HttpStatus.CREATED);
+            @Valid @RequestBody CheckoutRequest checkoutRequest) throws Exception {
+        BookLoanDTO bookLoan = bookLoanService.checkoutBook(checkoutRequest);
+        return new ResponseEntity<>(bookLoan, HttpStatus.CREATED);
     }
 
     @PostMapping("checkout/user/{userId}")
     public ResponseEntity<?> checkoutBookForUser(
             @PathVariable Long userId,
-            @Valid @RequestBody CheckoutRequest checkoutRequest) throws Exception{
+            @Valid @RequestBody CheckoutRequest checkoutRequest) throws Exception {
         BookLoanDTO bookLoan = bookLoanService.checkoutBookForUser(userId, checkoutRequest);
-        return new ResponseEntity<>(bookLoan,HttpStatus.CREATED);
+        return new ResponseEntity<>(bookLoan, HttpStatus.CREATED);
     }
 
-
-//    @PostMapping("/checkin")
-//    public ResponseEntity<?> checkin(
-//            @Valid @RequestBody CheckInRequest checkInRequest) throws Exception{
-//        BookLoanDTO bookLoan = bookLoanService.checkInBook(checkInRequest);
-//        return new ResponseEntity<>(bookLoan,HttpStatus.CREATED);
-//    }
+    // @PostMapping("/checkin")
+    // public ResponseEntity<?> checkin(
+    // @Valid @RequestBody CheckInRequest checkInRequest) throws Exception{
+    // BookLoanDTO bookLoan = bookLoanService.checkInBook(checkInRequest);
+    // return new ResponseEntity<>(bookLoan,HttpStatus.CREATED);
+    // }
     @GetMapping("/my/{id}")
     public ResponseEntity<BookLoanDTO> getMyBookLoanById(
-        @PathVariable Long id) throws Exception {
-    BookLoanDTO bookLoan = bookLoanService.getMyBookLoanById(id);
-    return ResponseEntity.ok(bookLoan);
-}
-
+            @PathVariable Long id) throws Exception {
+        BookLoanDTO bookLoan = bookLoanService.getMyBookLoanById(id);
+        return ResponseEntity.ok(bookLoan);
+    }
 
     @PatchMapping("/my/{id}/confirm-received")
     public ResponseEntity<BookLoanDTO> confirmReceived(
@@ -57,44 +55,47 @@ public class BookLoanController {
         return ResponseEntity.ok(bookLoanService.confirmReceived(id));
     }
 
-
-
     @PatchMapping("/{id}/shipping")
     public ResponseEntity<BookLoanDTO> markAsShipping(
             @PathVariable Long id) throws Exception {
-        return ResponseEntity.ok(bookLoanService.markAsShipping(id));
+        return ResponseEntity.ok(bookLoanService.markAsShipping(id, null));
     }
 
+    @PatchMapping("/{id}/delivered")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<BookLoanDTO> markAsDelivered(
+            @PathVariable Long id) throws Exception {
+        return ResponseEntity.ok(bookLoanService.markDelivered(id));
+    }
 
     @GetMapping("/my")
     public ResponseEntity<?> getMyBookLoans(
             @RequestParam(required = false) BookLoanStatus status,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) throws Exception{
+            @RequestParam(defaultValue = "20") int size) throws Exception {
 
-        PageResponse<BookLoanDTO> bookLoan= bookLoanService.getMyBookLoans(status, page,size);
+        PageResponse<BookLoanDTO> bookLoan = bookLoanService.getMyBookLoans(status, page, size);
         return ResponseEntity.ok(bookLoan);
     }
-//    @PostMapping("/my/checkin")
-//    public ResponseEntity<?> selfCheckin(
-//            @Valid @RequestBody CheckInRequest checkInRequest) throws Exception {
-//        BookLoanDTO bookLoan = bookLoanService.checkInBook(checkInRequest);
-//        return new ResponseEntity<>(bookLoan, HttpStatus.OK);
-//    }
-
+    // @PostMapping("/my/checkin")
+    // public ResponseEntity<?> selfCheckin(
+    // @Valid @RequestBody CheckInRequest checkInRequest) throws Exception {
+    // BookLoanDTO bookLoan = bookLoanService.checkInBook(checkInRequest);
+    // return new ResponseEntity<>(bookLoan, HttpStatus.OK);
+    // }
 
     @PostMapping("/search")
     public ResponseEntity<?> getAllBookLoans(
-            @RequestBody BookLoanSearchRequest searchRequest) throws Exception{
+            @RequestBody BookLoanSearchRequest searchRequest) throws Exception {
 
-            PageResponse<BookLoanDTO> bookLoans= bookLoanService.getBookLoans(searchRequest);
-            return ResponseEntity.ok(bookLoans);
+        PageResponse<BookLoanDTO> bookLoans = bookLoanService.getBookLoans(searchRequest);
+        return ResponseEntity.ok(bookLoans);
     }
 
     @PostMapping("/admin/update-overdue")
-    public ResponseEntity<?> updateOverdueBookLoans() throws Exception{
+    public ResponseEntity<?> updateOverdueBookLoans() throws Exception {
         int updateCount = bookLoanService.updateOverdueBookLoan();
-        return ResponseEntity.ok( new ApiResponse("overdue da cap nhat", true));
+        return ResponseEntity.ok(new ApiResponse("overdue da cap nhat", true));
     }
 
     @PostMapping("/my/return-request")
@@ -104,14 +105,11 @@ public class BookLoanController {
         return ResponseEntity.ok(bookLoan);
     }
 
-
     @PostMapping("/admin/approve-return")
     public ResponseEntity<?> approveReturn(
             @Valid @RequestBody ApproveReturnRequest request) throws Exception {
         BookLoanDTO bookLoan = bookLoanService.approveReturn(request);
         return ResponseEntity.ok(bookLoan);
     }
-
-
 
 }

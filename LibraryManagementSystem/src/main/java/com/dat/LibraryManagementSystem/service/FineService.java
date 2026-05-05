@@ -41,4 +41,6 @@ public interface FineService  {
     List<FineDTO> getMyFines() throws Exception;
 
     Long getTotalPendingFines(Long userId);
+
+    void deleteFine(Long id) throws Exception;
 }

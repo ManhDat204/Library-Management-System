@@ -41,7 +41,6 @@ public class BookDTO {
     private String publisherName;
 
 
-
     private LocalDate publicationDate;
 
     @Size( max = 20, message = "Ngon ngu khong qua 20 ki tu")

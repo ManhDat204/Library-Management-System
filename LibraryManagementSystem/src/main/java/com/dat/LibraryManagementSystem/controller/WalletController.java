@@ -65,7 +65,7 @@ public class WalletController {
                 .amount(request.getAmount())
                 .paymentType(com.dat.LibraryManagementSystem.domain.PaymentType.WALLET_DEPOSIT)
                 .gateway(com.dat.LibraryManagementSystem.domain.PaymentGateway.VNPay)
-                .description("Nap tien vi - User " + userId)
+                .description("Nạp tiền vào ví " + userId)
                 .build();
 
         PaymentDTO created = paymentService.createPayment(paymentDTO);

@@ -61,7 +61,7 @@ public class ReservationServiceImpl implements ReservationService {
                 userId,reservationRequest.getBookId(), BookLoanStatus.CHECK_OUT
         );
         if (alreadyHasLoan){
-            throw new Exception("Ban da dang muon sach nay ");
+            throw new Exception("Bạn đang mượn sách này rồi ");
         }
 
         // kiem tra user ton tai
@@ -69,11 +69,11 @@ public class ReservationServiceImpl implements ReservationService {
 
         // kiem tra book ton tai
         Book book = bookRepository.findById(reservationRequest.getBookId())
-                .orElseThrow(()-> new Exception("Sach khong ton tai")
+                .orElseThrow(()-> new Exception("Sách không tồn tại")
         );
 
         if(reservationRepository.hasActiveReservation(userId, book.getId())){
-            throw new Exception("Ban da dat truoc cho sach nay");
+            throw new Exception("Bạn đã đặt trước sách này rồi");
         }
 
         if(book.getAvailableCopies()>0){
@@ -83,7 +83,7 @@ public class ReservationServiceImpl implements ReservationService {
         long activateReservations = reservationRepository.countActiveReservationsByUser(userId);
 
         if(activateReservations>= MAX_RESERVATIONS){
-            throw new Exception("Ban da dat truoc" +MAX_RESERVATIONS + "lan");
+            throw new Exception("Ban da dat truoc " +MAX_RESERVATIONS + "lan");
         }
         Reservation reservation = new Reservation();
         reservation.setUser(user);

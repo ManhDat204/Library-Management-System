@@ -25,6 +25,7 @@ public interface WalletService {
 
     void unlockDeposit(BookLoan bookLoan);
 
+    void deductBalance(Long userId, BigDecimal amount, String reason);
 
     Page<WalletTransactionDTO> getMyTransactions(Pageable pageable) throws UserException;
 

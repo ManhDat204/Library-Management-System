@@ -30,7 +30,11 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public User getCurrentUser() throws UserException {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new UserException("Vui lòng đăng nhập lại.");
+        }
+        String email = authentication.getName();
         User user = userRepository.findByEmail(email);
         if (user == null) {
             throw new UserException("Nguoi dung khong ton tai");

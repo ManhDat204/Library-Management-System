@@ -42,7 +42,8 @@ public class GenreMapper {
                     .map(subGenre -> toDTO(subGenre)).collect(Collectors.toList()));
         }
 
-        // dto.setBookCount((Long) (savedGenre.getB))
+        dto.setBookCount(genreRepository.countBooksByGenre(savedGenre.getId()));
+
 
         return dto;
     }

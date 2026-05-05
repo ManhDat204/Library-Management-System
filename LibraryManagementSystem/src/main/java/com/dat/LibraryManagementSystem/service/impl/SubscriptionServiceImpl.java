@@ -61,7 +61,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
                     .paymentStatus(PaymentStatus.PENDING)
                     .amount(savedSubscription.getPrice())
                     .txnRef("SUBS" + savedSubscription.getId() + "-" + System.currentTimeMillis())
-                    .description("Phí đăng ký gói " + plan.getName())
+                    .description("Phí đăng ký  " + plan.getName())
                     .build();
             PaymentDTO savedPayment = paymentService.createPayment(paymentDto);
 
@@ -81,10 +81,10 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     public SubscriptionDTO getUsersActiveSubscription(Long userId) throws SubscriptionException, UserException {
         User user = userService.getCurrentUser();
 
-        Subscription subscription = subscriptionRepository
+        return subscriptionRepository
                 .findActiveSubscriptionByUserId(user.getId(), LocalDate.now())
-                .orElseThrow(()-> new SubscriptionException("Bạn chưa đăng ký gói để có thể mượn sách"));
-        return subscriptionMapper.toDTO(subscription);
+                .map(subscriptionMapper::toDTO)
+                .orElse(null);
     }
 
     @Override

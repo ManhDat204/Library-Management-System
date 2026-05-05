@@ -39,9 +39,16 @@ public class AuthorController {
         return ResponseEntity.ok(updated);
     }
 
+//    @DeleteMapping("/{authorId}")
+//    public ResponseEntity<?> deleteAuthor(@PathVariable("authorId") Long authorId) throws Exception {
+//        authorService.deleteAuthor(authorId);
+//        ApiResponse response = new ApiResponse("Xóa tác giả thành công", true);
+//        return ResponseEntity.ok(response);
+//    }
+
     @DeleteMapping("/{authorId}")
-    public ResponseEntity<?> deleteAuthor(@PathVariable("authorId") Long authorId) throws Exception {
-        authorService.deleteAuthor(authorId);
+    public ResponseEntity<?> softDeleteAuthor(@PathVariable("authorId") Long authorId) throws Exception {
+        authorService.softDeleteAuthor(authorId);
         ApiResponse response = new ApiResponse("Xóa tác giả thành công", true);
         return ResponseEntity.ok(response);
     }

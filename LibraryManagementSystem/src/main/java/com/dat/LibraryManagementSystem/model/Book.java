@@ -29,7 +29,7 @@ public class Book {
     private String title;
 
     @ManyToOne
-    @JoinColumn(nullable = false)
+    @JoinColumn(nullable = true)
     private Author author;
 
     @ManyToOne
@@ -59,6 +59,7 @@ public class Book {
     private String coverImageUrl;
 
     @Column( nullable = false)
+    @Builder.Default
     private Boolean active = true;
 
     @CreationTimestamp

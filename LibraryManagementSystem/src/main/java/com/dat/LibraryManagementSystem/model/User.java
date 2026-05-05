@@ -33,6 +33,7 @@ public class User {
     @Enumerated(EnumType.STRING)
     private UserRole role;
 
+    @Builder.Default
     private AuthProvider authProvider = AuthProvider.LOCAL;
 
     private String googleId;

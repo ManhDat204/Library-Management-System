@@ -1,5 +1,6 @@
 package com.dat.LibraryManagementSystem.repository;
 
+import com.dat.LibraryManagementSystem.model.Author;
 import com.dat.LibraryManagementSystem.model.Book;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -10,6 +11,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 public interface BookRepository extends JpaRepository<Book, Long> {
 
@@ -17,7 +19,9 @@ public interface BookRepository extends JpaRepository<Book, Long> {
 
         boolean existsByIsbn(String isbn);
 
-        @Query("SELECT b FROM Book b JOIN b.author a WHERE " +
+        List<Book> findByAuthor(Author author);
+
+        @Query("SELECT b FROM Book b LEFT JOIN b.author a WHERE " +
                         "(:searchTerm IS NULL OR " +
                         "LOWER(b.title) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
                         "LOWER(a.authorName) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
@@ -55,5 +59,13 @@ public interface BookRepository extends JpaRepository<Book, Long> {
 
         @Query("SELECT COUNT(bl) FROM BookLoan bl WHERE bl.book.id = :bookId")
         Long countLoansByBookId(@Param("bookId") Long bookId);
+
+        // AI Recommendation methods
+        @Query("SELECT b FROM Book b WHERE b.genre.id IN :genreIds AND b.id NOT IN :borrowedIds AND b.active = true")
+        List<Book> findByGenreIdInAndIdNotIn(@Param("genreIds") List<Long> genreIds,
+                        @Param("borrowedIds") java.util.Set<Long> borrowedIds);
+
+        @Query("SELECT b FROM Book b WHERE b.genre.id = :genreId AND b.active = true")
+        List<Book> findByGenreId(@Param("genreId") Long genreId);
 
 }

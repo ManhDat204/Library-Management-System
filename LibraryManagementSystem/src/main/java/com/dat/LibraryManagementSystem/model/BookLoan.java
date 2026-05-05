@@ -1,6 +1,5 @@
 package com.dat.LibraryManagementSystem.model;
 
-
 import com.dat.LibraryManagementSystem.domain.BookLoanStatus;
 import com.dat.LibraryManagementSystem.domain.BookLoanType;
 import jakarta.persistence.*;
@@ -24,7 +23,6 @@ public class BookLoan {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-
     @JoinColumn(nullable = false)
     @ManyToOne
     private User user;
@@ -39,39 +37,41 @@ public class BookLoan {
     @Column(nullable = false, length = 20)
     private BookLoanStatus status;
 
+    @Column(name = "handled_by", length = 100)
+    private String handledBy;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "address_id")
     private Address address;
 
-    @Column( nullable = false)
+    @Column(nullable = false)
     private LocalDate checkoutDate;
+
+    @Column(name = "checkout_date_time")
+    private LocalDateTime checkoutDateTime;
 
     private LocalDate dueDate;
 
     private LocalDate returnDate;
 
-
-
-
-
-    @Column( length = 500)
+    @Column(length = 500)
     private String notes;
 
-    @Column( nullable = false)
+    @Column(nullable = false)
+    @Builder.Default
     private Boolean isOverDue = false;
 
-    @Column( nullable = false)
-    private Integer overdueDays =0;
+    @Column(nullable = false)
+    @Builder.Default
+    private Integer overdueDays = 0;
 
-    @Column( nullable = false, updatable = false)
+    @Column(nullable = false, updatable = false)
     @CreationTimestamp
     private LocalDateTime createdAt;
 
-    @Column( nullable = false)
+    @Column(nullable = false)
     @UpdateTimestamp
     private LocalDateTime updatedAt;
-
 
     public boolean isActive() {
         return status == BookLoanStatus.CHECK_OUT

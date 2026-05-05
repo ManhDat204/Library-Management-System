@@ -39,6 +39,7 @@ public class SubscriptionPlan {
     @Column(nullable = false)
     private Long  price;
 
+    @Builder.Default
     private String currency ="VND";
 
     @Column(nullable = false)
@@ -49,9 +50,12 @@ public class SubscriptionPlan {
     @Positive(message = "Sach duoc muon toi da ngay cho phep")
     private Integer maxDaysPerBook;
 
+    @Builder.Default
     private Integer displayOrder=0;
 
+    @Builder.Default
     private Boolean isActive = true;
+    @Builder.Default
     private Boolean isFeatured = false;
 
     private String badgeText;

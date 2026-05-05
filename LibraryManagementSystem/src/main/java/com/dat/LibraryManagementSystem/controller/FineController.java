@@ -78,5 +78,11 @@ public class FineController {
         }
         return fineService.waiveFine(request);
     }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteFine(@PathVariable Long id) throws Exception {
+        fineService.deleteFine(id);
+        return ResponseEntity.noContent().build();
+    }
 }
 

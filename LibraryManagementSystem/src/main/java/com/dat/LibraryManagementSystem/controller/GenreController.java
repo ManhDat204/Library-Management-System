@@ -3,6 +3,7 @@ package com.dat.LibraryManagementSystem.controller;
 import com.dat.LibraryManagementSystem.exception.GenreException;
 import com.dat.LibraryManagementSystem.model.Genre;
 import com.dat.LibraryManagementSystem.payload.dto.GenreDTO;
+import com.dat.LibraryManagementSystem.payload.request.GenreSearchRequest;
 import com.dat.LibraryManagementSystem.payload.response.ApiResponse;
 import com.dat.LibraryManagementSystem.repository.GenreRepository;
 import com.dat.LibraryManagementSystem.service.GenreService;
@@ -36,6 +37,7 @@ public class GenreController {
 
 
 
+
     @PutMapping("/{genreId}")
     public ResponseEntity<?> updateGenre(@PathVariable("genreId") Long genreId, @RequestBody GenreDTO genre)
             throws GenreException {
@@ -54,7 +56,7 @@ public class GenreController {
     @DeleteMapping("/{genreId}/hard")
     public ResponseEntity<?> hardDeleteGenre(@PathVariable("genreId") Long genreId)
             throws GenreException {
-        genreService.deleteGenre(genreId);
+        genreService.hardDeleteGenre(genreId);
         ApiResponse response = new ApiResponse("Xoa the loai thanh cong - xoa cung", true);
         return ResponseEntity.ok(response);
     }
@@ -89,6 +91,23 @@ public class GenreController {
         return ResponseEntity.ok(genres);
     }
 
+    @GetMapping
+    public ResponseEntity<?> searchGenres(
+            @RequestParam(defaultValue = "") String searchTerm,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "name") String sortBy,
+            @RequestParam(defaultValue = "ASC") String sortDirection) {
+
+        GenreSearchRequest request = new GenreSearchRequest();
+        request.setSearchTerm(searchTerm);
+        request.setPage(page);
+        request.setSize(size);
+        request.setSortBy(sortBy);
+        request.setSortDirection(sortDirection);
+
+        return ResponseEntity.ok(genreService.searchGenres(request));
+    }
 
 
 }

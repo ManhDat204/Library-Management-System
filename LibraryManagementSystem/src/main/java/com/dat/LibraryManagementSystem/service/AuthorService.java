@@ -18,6 +18,7 @@ public interface AuthorService {
 
     void deleteAuthor(Long id) throws Exception;
 
+    public void softDeleteAuthor(Long id) throws Exception;
 
     PageResponse<AuthorDTO> searchAuthors(AuthorSearchRequest request);
 

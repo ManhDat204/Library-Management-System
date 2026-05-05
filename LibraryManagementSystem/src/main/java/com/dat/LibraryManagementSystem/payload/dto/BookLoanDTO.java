@@ -1,6 +1,5 @@
 package com.dat.LibraryManagementSystem.payload.dto;
 
-
 import com.dat.LibraryManagementSystem.domain.BookLoanStatus;
 import com.dat.LibraryManagementSystem.domain.BookLoanType;
 import jakarta.validation.constraints.NotNull;
@@ -29,10 +28,12 @@ public class BookLoanDTO {
     private BookLoanType bookLoanType;
     private BookLoanStatus bookLoanStatus;
     private LocalDate checkoutDate;
+    private LocalDateTime checkoutDateTime;
+    private String checkoutTime;
     private LocalDate dueDate;
     private Long remainingDays;
     private LocalDate returnDate;
-
+    private String handledBy;
     private Long addressId;
     private String recipientName;
     private String phoneNumber;

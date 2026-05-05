@@ -18,6 +18,7 @@ import com.dat.LibraryManagementSystem.repository.BookRepository;
 import com.dat.LibraryManagementSystem.repository.ReservationRepository;
 import com.dat.LibraryManagementSystem.service.*;
 import com.dat.LibraryManagementSystem.domain.FineType;
+import com.dat.LibraryManagementSystem.websocket.LoanWebSocketHandler;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -49,41 +50,37 @@ public class BookLoanServiceImpl implements BookLoanService {
     private final FineService fineService;
     private final ReservationRepository reservationRepository;
     private final EmailService emailService;
-    private  final AddressRepository addressRepository;
+    private final AddressRepository addressRepository;
     private final WalletService walletService;
     private static final int HOURS_TO_PICKUP = 24;
 
     @Override
     public BookLoanDTO checkoutBook(CheckoutRequest checkoutRequest) throws Exception {
         User user = userService.getCurrentUser();
-
         return checkoutBookForUser(user.getId(), checkoutRequest);
     }
 
     @Override
     public BookLoanDTO getMyBookLoanById(Long id) throws Exception {
-        User currentUser = userService.getCurrentUser(); // method lấy user đang login
+        User currentUser = userService.getCurrentUser();
         BookLoan loan = bookLoanRepository.findById(id)
-                .orElseThrow(() -> new Exception("Không tìm thấy đơn mượn"));
+                .orElseThrow(() -> new Exception("Không tìm thấy đơn hàng"));
 
-        // Bảo mật: chỉ cho xem đơn của chính mình
         if (!loan.getUser().getId().equals(currentUser.getId())) {
-            throw new Exception("Khong th xem don nay");
+            throw new Exception("Không th xem don nay");
         }
 
         return bookLoanMapper.toDTO(loan);
     }
+
     @Override
     public BookLoanDTO checkoutBookForUser(Long userId, CheckoutRequest checkoutRequest) throws Exception {
         User user = userService.findById(userId);
 
-        //user has active subscription
-
         SubscriptionDTO subscription = subscriptionService
                 .getUsersActiveSubscription(user.getId());
-
         Book book = bookRepository.findById(checkoutRequest.getBookId())
-                .orElseThrow(() -> new BookException("Sach khong ton tai voi id" + checkoutRequest.getBookId()));
+                .orElseThrow(() -> new BookException("Sách không có với mã sách" + checkoutRequest.getBookId()));
 
         if (!book.getActive()) {
             throw new BookException("Sách đang không hoạt động");
@@ -91,58 +88,67 @@ public class BookLoanServiceImpl implements BookLoanService {
         if (book.getAvailableCopies() <= 0) {
             throw new BookException("Sách không có sẵn");
         }
-        //kiem tra user da co book checkout nay chua
-        if(bookLoanRepository.hasActiveCheckout(userId, book.getId())){
+        //kiểm tra ngươi dùng có đang mượn sách này hay không
+        if (bookLoanRepository.hasActiveCheckout(userId, book.getId())) {
             throw new BookException("Bạn đang mượn sách này rồi");
         }
-        //kiem tra gioi han user active checkout
-
+        // kiem tra gioi han mượn sách của user
         long activeCheckouts = bookLoanRepository.countActiveBookLoanByUser(userId);
         int maxBooksAllowed = subscription.getMaxBooksAllowed();
 
-        if(activeCheckouts>=maxBooksAllowed){
-            throw new Exception("Ban da dat gioi han muon sach");
+        if (activeCheckouts >= maxBooksAllowed) {
+            throw new Exception("Bạn đã đạt giới hạn mượn sách");
         }
-
-        // kiem tra overdue book
 
         long overdueCount = bookLoanRepository.countOverdueBookLoansByUser(userId);
-        if(overdueCount>0) {
+        if (overdueCount > 0) {
             throw new Exception("Lan tra dau tien cho viec qua han");
         }
+        long pendingFines = fineService.getTotalPendingFines(userId);
+        if (pendingFines > 0) {
+            throw new Exception("Bạn còn phí phạt chưa thanh toán: " + pendingFines + " VNĐ. Vui lòng thanh toán trước khi mượn sách mới");
+        }
+
         BigDecimal bookPrice = book.getPrice() != null ? book.getPrice() : BigDecimal.ZERO;
         if (bookPrice.compareTo(BigDecimal.ZERO) > 0) {
             if (!walletService.hasSufficientBalance(userId, bookPrice)) {
                 throw new Exception(
                         "Số dư ví không đủ để mượn sách. " +
-//                                "Cần: " + bookPrice + " VNĐ. " +
-                                "Vui lòng nạp thêm tiền vào ví."
-                );
+                        // "Cần: " + bookPrice + " VNĐ. " +
+                                "Vui lòng nạp thêm tiền vào ví.");
             }
         }
 
         Address defaultAddress = addressRepository.findByUserIdAndIsDefaultTrue(user.getId())
                 .orElse(null);
-        //tao book loan
-            BookLoan bookLoan = BookLoan.builder()
-                    .user(user)
-                    .book(book)
-                    .address(defaultAddress)
-                    .bookLoanType(BookLoanType.CHECKOUT)
-                    .status(BookLoanStatus.CHECK_OUT)
-                    .checkoutDate(LocalDate.now())
-                    .dueDate(LocalDate.now().plusDays(checkoutRequest.getCheckoutDays()))
 
-                    .notes(checkoutRequest.getNotes())
-                    .isOverDue(false)
-                    .overdueDays(0)
-                    .build();
+        // Kiểm tra bắt buộc có địa chỉ mặc định
+        if (defaultAddress == null) {
+            throw new UserException("Bạn phải thiết lập một địa chỉ mặc định để mượn sách");
+        }
 
-        //cap nhat book co san {tru 1 them sau }
+        // tao book loan
+        LocalDateTime now = LocalDateTime.now();
+        BookLoan bookLoan = BookLoan.builder()
+                .user(user)
+                .book(book)
+                .address(defaultAddress)
+                .bookLoanType(BookLoanType.CHECKOUT)
+                .status(BookLoanStatus.CHECK_OUT)
+                .checkoutDate(now.toLocalDate())
+                .checkoutDateTime(now)
+                .dueDate(now.toLocalDate().plusDays(checkoutRequest.getCheckoutDays()))
+
+                .notes(checkoutRequest.getNotes())
+                .isOverDue(false)
+                .overdueDays(0)
+                .build();
+
+        // cap nhat book co san {tru 1 them sau }
         book.setAvailableCopies(book.getAvailableCopies() - 1);
         bookRepository.save(book);
 
-        //save book loan
+        // save book loan
         BookLoan savedBookLoan = bookLoanRepository.save(bookLoan);
         // khoa tien cọc
         if (bookPrice.compareTo(BigDecimal.ZERO) > 0) {
@@ -151,10 +157,11 @@ public class BookLoanServiceImpl implements BookLoanService {
                     bookPrice, userId, book.getTitle());
         }
 
-
+        LoanWebSocketHandler.broadcastLoanUpdate(savedBookLoan.getId(), "CHECK_OUT", "LOAN_CREATED");
         return bookLoanMapper.toDTO(savedBookLoan);
 
     }
+
     @Override
     public BookLoanDTO confirmReceived(Long loanId) throws Exception {
         User currentUser = userService.getCurrentUser();
@@ -181,77 +188,117 @@ public class BookLoanServiceImpl implements BookLoanService {
     }
 
     @Override
-    public BookLoanDTO markAsShipping(Long loanId) throws Exception {
+    public BookLoanDTO markAsShipping(Long loanId, String ignoredHandledBy) throws Exception {
         BookLoan bookLoan = bookLoanRepository.findById(loanId)
                 .orElseThrow(() -> new Exception("Không tìm thấy đơn mượn #" + loanId));
 
         if (bookLoan.getStatus() != BookLoanStatus.CHECK_OUT) {
-            throw new BookException("Chỉ có thể giao khi đơn đang ở trạng thái CHECK_OUT");
+            throw new BookException("Chỉ có thể giao khi đơn đang ở trạng thái mượn");
         }
 
+        User currentUser = userService.getCurrentUser();
+        String handledBy = currentUser.getFullName() != null && !currentUser.getFullName().isBlank()
+                ? currentUser.getFullName()
+                : currentUser.getEmail();
+
+        bookLoan.setHandledBy(handledBy);
         bookLoan.setStatus(BookLoanStatus.SHIPPING);
         bookLoan.setNotes("Đang vận chuyển đến người dùng");
         BookLoan saved = bookLoanRepository.save(bookLoan);
 
-        log.info("Đánh dấu đơn #{} đang vận chuyển", loanId);
+        // Broadcast update via WebSocket
+        LoanWebSocketHandler.broadcastLoanUpdate(loanId, "SHIPPING", "LOAN_SHIPPING");
+
+        log.info("Đánh dấu đơn #{} đang vận chuyển bởi {}", loanId, handledBy);
         return bookLoanMapper.toDTO(saved);
     }
 
-//    @Override
-//    public BookLoanDTO checkInBook(CheckInRequest checkInRequest) throws Exception {
-//        //validate book loan ton tai
-//        BookLoan bookLoan = bookLoanRepository.findById(checkInRequest.getBookLoanId())
-//                .orElseThrow(()-> new Exception("Book loan khong ton tai"));
-//
-//
-//        //kiem tra neu san sang returned
-//        if(!bookLoan.isActive()){
-//            throw  new BookException("book loan is not active");
-//        }
-//
-//        // set return date
-//        bookLoan.setReturnDate(LocalDate.now());
-//        BookLoanStatus condition = checkInRequest.getCondition();
-//        if(condition ==null){
-//            condition = BookLoanStatus.RETURNED;
-//        }
-//        bookLoan.setStatus(condition);
-//
-//        // fine logic
-//        int overdueDays = calculateOverdueDate(bookLoan.getDueDate(), LocalDate.now());
-//
-//        if(condition == BookLoanStatus.LOST || condition == BookLoanStatus.DAMAGED) {
-//            // charge replacement cost (currently book price) plus any fixed fee
-//            BigDecimal amount = bookLoan.getBook().getPrice() != null ? bookLoan.getBook().getPrice() : BigDecimal.ZERO;
-//            if (condition == BookLoanStatus.DAMAGED) {
-//                // maybe add 50% damage fee
-//                amount = amount.multiply(BigDecimal.valueOf(1.5));
-//            }
-//            bookLoan.setIsOverDue(false);
-//            bookLoan.setOverdueDays(overdueDays);
-//            fineService.createFine(bookLoan, condition == BookLoanStatus.LOST ? FineType.LOST : FineType.DAMAGE, amount, "Book " + condition.name().toLowerCase());
-//        } else if(overdueDays > 0){
-//            bookLoan.setIsOverDue(true);
-//            bookLoan.setOverdueDays(overdueDays);
-//            // create overdue fine only if not already exists
-//            fineService.createFine(bookLoan, overdueDays);
-//        }
-//        //
-//        bookLoan.setNotes("Sách được trả bởi người dùng");
-//        //7 cap nhat book co san
-//        if(condition !=BookLoanStatus.LOST){
-//            Book book = bookLoan.getBook();
-//            book.setAvailableCopies(book.getAvailableCopies()+1);
-//            bookRepository.save(book);
-//            notifyNextReservation(book);
-//
-//        }
-//
-//
-//        BookLoan savedBookLoan = bookLoanRepository.save(bookLoan);
-//        return bookLoanMapper.toDTO(savedBookLoan);
-//
-//    }
+    @Override
+    public BookLoanDTO markDelivered(Long loanId) throws Exception {
+        BookLoan bookLoan = bookLoanRepository.findById(loanId)
+                .orElseThrow(() -> new Exception("Không tìm thấy đơn mượn #" + loanId));
+
+        if (bookLoan.getStatus() != BookLoanStatus.SHIPPING) {
+            throw new BookException("Chỉ có thể xác nhận giao hàng thành công khi đơn đang ở trạng thái vận chuyển");
+        }
+
+        User currentUser = userService.getCurrentUser();
+        String handledBy = currentUser.getFullName() != null && !currentUser.getFullName().isBlank()
+                ? currentUser.getFullName()
+                : currentUser.getEmail();
+
+        bookLoan.setStatus(BookLoanStatus.DELIVERED);
+        bookLoan.setNotes("Nhân viên xác nhận giao hàng thành công");
+        BookLoan saved = bookLoanRepository.save(bookLoan);
+
+      
+        LoanWebSocketHandler.broadcastLoanUpdate(loanId, "DELIVERED", "LOAN_DELIVERED");
+
+        log.info("Xác nhận giao hàng thành công đơn #{} bởi {}", loanId, handledBy);
+        return bookLoanMapper.toDTO(saved);
+    }
+
+    // @Override
+    // public BookLoanDTO checkInBook(CheckInRequest checkInRequest) throws
+    // Exception {
+    // //validate book loan ton tai
+    // BookLoan bookLoan =
+    // bookLoanRepository.findById(checkInRequest.getBookLoanId())
+    // .orElseThrow(()-> new Exception("Book loan khong ton tai"));
+    //
+    //
+    // //kiem tra neu san sang returned
+    // if(!bookLoan.isActive()){
+    // throw new BookException("book loan is not active");
+    // }
+    //
+    // // set return date
+    // bookLoan.setReturnDate(LocalDate.now());
+    // BookLoanStatus condition = checkInRequest.getCondition();
+    // if(condition ==null){
+    // condition = BookLoanStatus.RETURNED;
+    // }
+    // bookLoan.setStatus(condition);
+    //
+    // // fine logic
+    // int overdueDays = calculateOverdueDate(bookLoan.getDueDate(),
+    // LocalDate.now());
+    //
+    // if(condition == BookLoanStatus.LOST || condition == BookLoanStatus.DAMAGED) {
+    // // charge replacement cost (currently book price) plus any fixed fee
+    // BigDecimal amount = bookLoan.getBook().getPrice() != null ?
+    // bookLoan.getBook().getPrice() : BigDecimal.ZERO;
+    // if (condition == BookLoanStatus.DAMAGED) {
+    // // maybe add 50% damage fee
+    // amount = amount.multiply(BigDecimal.valueOf(1.5));
+    // }
+    // bookLoan.setIsOverDue(false);
+    // bookLoan.setOverdueDays(overdueDays);
+    // fineService.createFine(bookLoan, condition == BookLoanStatus.LOST ?
+    // FineType.LOST : FineType.DAMAGE, amount, "Book " +
+    // condition.name().toLowerCase());
+    // } else if(overdueDays > 0){
+    // bookLoan.setIsOverDue(true);
+    // bookLoan.setOverdueDays(overdueDays);
+    // // create overdue fine only if not already exists
+    // fineService.createFine(bookLoan, overdueDays);
+    // }
+    // //
+    // bookLoan.setNotes("Sách được trả bởi người dùng");
+    // //7 cap nhat book co san
+    // if(condition !=BookLoanStatus.LOST){
+    // Book book = bookLoan.getBook();
+    // book.setAvailableCopies(book.getAvailableCopies()+1);
+    // bookRepository.save(book);
+    // notifyNextReservation(book);
+    //
+    // }
+    //
+    //
+    // BookLoan savedBookLoan = bookLoanRepository.save(bookLoan);
+    // return bookLoanMapper.toDTO(savedBookLoan);
+    //
+    // }
 
     // XOÁ method checkInBook cũ, THAY bằng method này
     @Override
@@ -273,7 +320,6 @@ public class BookLoanServiceImpl implements BookLoanService {
         return bookLoanMapper.toDTO(saved);
     }
 
-
     @Override
     public BookLoanDTO approveReturn(ApproveReturnRequest request) throws Exception {
         BookLoan bookLoan = bookLoanRepository.findById(request.getBookLoanId())
@@ -287,7 +333,8 @@ public class BookLoanServiceImpl implements BookLoanService {
         bookLoan.setReturnDate(LocalDate.now());
 
         BookLoanStatus condition = request.getCondition();
-        if (condition == null) condition = BookLoanStatus.RETURNED;
+        if (condition == null)
+            condition = BookLoanStatus.RETURNED;
         bookLoan.setStatus(condition);
 
         int overdueDays = calculateOverdueDate(bookLoan.getDueDate(), LocalDate.now());
@@ -297,8 +344,9 @@ public class BookLoanServiceImpl implements BookLoanService {
         // Xử lý fine
         if (condition == BookLoanStatus.LOST || condition == BookLoanStatus.DAMAGED) {
             BigDecimal amount = bookLoan.getBook().getPrice() != null
-                    ? bookLoan.getBook().getPrice() : BigDecimal.ZERO;
-            if (condition == BookLoanStatus.DAMAGED) {
+                    ? bookLoan.getBook().getPrice()
+                    : BigDecimal.ZERO;
+            if (condition == BookLoanStatus.LOST) {
                 amount = amount.multiply(BigDecimal.valueOf(1.5));
             }
             bookLoan.setIsOverDue(false);
@@ -306,7 +354,7 @@ public class BookLoanServiceImpl implements BookLoanService {
 
             FineType fineType = condition == BookLoanStatus.LOST ? FineType.LOST : FineType.DAMAGE;
             fineService.createFine(bookLoan, fineType, amount,
-                    "Sách " + condition.name().toLowerCase());
+                    "Sách " +   (condition == BookLoanStatus.LOST ? "mất" : "hư hỏng"));
 
             fineMessage = condition == BookLoanStatus.LOST ? "Sách bị mất" : "Sách bị hư hỏng";
             fineAmount = amount;
@@ -319,7 +367,8 @@ public class BookLoanServiceImpl implements BookLoanService {
         }
 
         bookLoan.setNotes(request.getNotes() != null
-                ? request.getNotes() : "Admin đã xác nhận trả sách");
+                ? request.getNotes()
+                : "Nhân viên đã xác nhận trả sách");
 
         // Cộng lại availableCopies nếu không mất sách
         if (condition != BookLoanStatus.LOST) {
@@ -328,17 +377,28 @@ public class BookLoanServiceImpl implements BookLoanService {
             bookRepository.save(book);
             notifyNextReservation(book);
             walletService.unlockDeposit(bookLoan);
+
+            // Trừ 30.000đ từ ví khi trả sách thành công
+            if (condition == BookLoanStatus.RETURNED) {
+                try {
+                    walletService.deductBalance(bookLoan.getUser().getId(),
+                            new BigDecimal("30000"),
+                            "Phí trả sách - " + bookLoan.getBook().getTitle());
+                    log.info("[WALLET] Đã trừ 30.000đ từ ví user {} khi trả sách '{}'",
+                            bookLoan.getUser().getId(), bookLoan.getBook().getTitle());
+                } catch (Exception e) {
+                    log.warn("[WALLET] Lỗi khi trừ phí trả sách: {}", e.getMessage());
+                }
+            }
         }
 
         BookLoan saved = bookLoanRepository.save(bookLoan);
 
-        // Gửi email thông báo cho user
+        LoanWebSocketHandler.broadcastLoanUpdate(saved.getId(), condition.name(), "LOAN_RETURN_APPROVED");
         sendReturnConfirmationEmail(bookLoan, condition, fineMessage, fineAmount);
 
         return bookLoanMapper.toDTO(saved);
     }
-
-
 
     private void notifyNextReservation(Book book) {
         try {
@@ -366,99 +426,95 @@ public class BookLoanServiceImpl implements BookLoanService {
 
             emailService.sendEmail(
                     reservation.getUser().getEmail(),
-                    "📚 Sách bạn đặt trước đã có sẵn: " + book.getTitle(),
-                    buildAvailableEmailBody(userName, book.getTitle(), book.getAuthor().getAuthorName(), deadline)
-            );
+                    "Sách bạn đặt trước đã có sẵn: " + book.getTitle(),
+                    buildAvailableEmailBody(userName, book.getTitle(), book.getAuthor().getAuthorName(), deadline));
 
-            log.info("Đã notify user {} cho sách '{}'", reservation.getUser().getEmail(), book.getTitle());
+            log.info("Đã thông báo cho user {} cho sách '{}'", reservation.getUser().getEmail(), book.getTitle());
 
         } catch (Exception e) {
-            log.error("Loi khi notify reservation cho bookId={}: {}", book.getId(), e.getMessage());
+            log.error("Loi khi thông báo dặt trước cho bookId={}: {}", book.getId(), e.getMessage());
         }
     }
 
     private String buildAvailableEmailBody(String userName, String bookTitle,
-                                           String bookAuthor, String deadline) {
+            String bookAuthor, String deadline) {
         return """
-            <!DOCTYPE html><html lang="vi"><head><meta charset="UTF-8"/></head>
-            <body style="margin:0;padding:0;background:#f5f0e8;font-family:'Segoe UI',Arial,sans-serif;">
-              <table width="100%%" cellpadding="0" cellspacing="0" style="padding:40px 20px;">
-                <tr><td align="center">
-                  <table width="560" cellpadding="0" cellspacing="0"
-                    style="background:#fff;border-radius:20px;overflow:hidden;
-                           box-shadow:0 4px 24px rgba(0,0,0,0.08);">
-                    <tr>
-                      <td style="background:linear-gradient(135deg,#1a1a2e,#2d1b00);
-                                 padding:32px 40px;text-align:center;">
-                        <h1 style="margin:0;color:#f5f0e8;font-size:1.4rem;font-weight:800;">
-                          Sách<em style="color:#c8956c;">Hay</em>
-                        </h1>
-                        <p style="margin:6px 0 0;color:rgba(255,255,255,0.4);font-size:0.75rem;
-                                  text-transform:uppercase;letter-spacing:0.1em;">
-                          Thông báo đặt trước
-                        </p>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td style="padding:32px 40px;">
-                        <p style="margin:0 0 14px;color:#555;font-size:0.95rem;line-height:1.7;">
-                          Xin chào <strong style="color:#1a1a1a;">%s</strong>,
-                        </p>
-                        <p style="margin:0 0 22px;color:#555;font-size:0.9rem;line-height:1.7;">
-                          Cuốn sách bạn đặt trước đã <strong style="color:#16a34a;">có sẵn</strong>
-                          tại thư viện.
-                        </p>
-                        <div style="background:#fafafa;border:1.5px solid rgba(0,0,0,0.08);
-                                    border-radius:12px;padding:18px 22px;margin-bottom:16px;">
-                          <div style="font-size:0.62rem;font-weight:700;color:#c8956c;
-                                      text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">
-                            Thông tin sách
-                          </div>
-                          <div style="font-size:1rem;font-weight:800;color:#1a1a1a;margin-bottom:3px;">%s</div>
-                          <div style="font-size:0.82rem;color:#888;">%s</div>
-                        </div>
-                        <div style="background:#fff7ed;border:1.5px solid #fed7aa;
-                                    border-radius:12px;padding:16px 20px;">
-                          <div style="font-size:0.72rem;font-weight:700;color:#c2410c;margin-bottom:5px;">
-                            ⏰ Thời hạn lấy sách
-                          </div>
-                          <div style="font-size:0.88rem;color:#7c2d12;line-height:1.6;">
-                            Vui lòng đến thư viện trước <strong>%s</strong>.<br/>
-                            Sau thời gian này, đặt trước sẽ bị huỷ tự động.
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td style="background:#fafafa;border-top:1px solid rgba(0,0,0,0.06);
-                                 padding:18px 40px;text-align:center;">
-                        <p style="margin:0;color:#ccc;font-size:0.72rem;">
-                          © 2025 SáchHay · Email tự động, vui lòng không trả lời.
-                        </p>
-                      </td>
-                    </tr>
+                <!DOCTYPE html><html lang="vi"><head><meta charset="UTF-8"/></head>
+                <body style="margin:0;padding:0;background:#f5f0e8;font-family:'Segoe UI',Arial,sans-serif;">
+                  <table width="100%%" cellpadding="0" cellspacing="0" style="padding:40px 20px;">
+                    <tr><td align="center">
+                      <table width="560" cellpadding="0" cellspacing="0"
+                        style="background:#fff;border-radius:20px;overflow:hidden;
+                               box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+                        <tr>
+                          <td style="background:linear-gradient(135deg,#1a1a2e,#2d1b00);
+                                     padding:32px 40px;text-align:center;">
+                            <h1 style="margin:0;color:#f5f0e8;font-size:1.4rem;font-weight:800;">
+                              Sách<em style="color:#c8956c;">Hay</em>
+                            </h1>
+                            <p style="margin:6px 0 0;color:rgba(255,255,255,0.4);font-size:0.75rem;
+                                      text-transform:uppercase;letter-spacing:0.1em;">
+                              Thông báo đặt trước
+                            </p>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td style="padding:32px 40px;">
+                            <p style="margin:0 0 14px;color:#555;font-size:0.95rem;line-height:1.7;">
+                              Xin chào <strong style="color:#1a1a1a;">%s</strong>,
+                            </p>
+                            <p style="margin:0 0 22px;color:#555;font-size:0.9rem;line-height:1.7;">
+                              Cuốn sách bạn đặt trước đã <strong style="color:#16a34a;">có sẵn</strong>
+                              tại thư viện.
+                            </p>
+                            <div style="background:#fafafa;border:1.5px solid rgba(0,0,0,0.08);
+                                        border-radius:12px;padding:18px 22px;margin-bottom:16px;">
+                              <div style="font-size:0.62rem;font-weight:700;color:#c8956c;
+                                          text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">
+                                Thông tin sách
+                              </div>
+                              <div style="font-size:1rem;font-weight:800;color:#1a1a1a;margin-bottom:3px;">%s</div>
+                              <div style="font-size:0.82rem;color:#888;">%s</div>
+                            </div>
+                            <div style="background:#fff7ed;border:1.5px solid #fed7aa;
+                                        border-radius:12px;padding:16px 20px;">
+                              <div style="font-size:0.72rem;font-weight:700;color:#c2410c;margin-bottom:5px;">
+                                ⏰ Thời hạn lấy sách
+                              </div>
+                              <div style="font-size:0.88rem;color:#7c2d12;line-height:1.6;">
+                                Vui lòng đến thư viện trước <strong>%s</strong>.<br/>
+                                Sau thời gian này, đặt trước sẽ bị huỷ tự động.
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td style="background:#fafafa;border-top:1px solid rgba(0,0,0,0.06);
+                                     padding:18px 40px;text-align:center;">
+                            <p style="margin:0;color:#ccc;font-size:0.72rem;">
+                              © 2025 SáchHay · Email tự động, vui lòng không trả lời.
+                            </p>
+                          </td>
+                        </tr>
+                      </table>
+                    </td></tr>
                   </table>
-                </td></tr>
-              </table>
-            </body></html>
-            """.formatted(userName, bookTitle, bookAuthor, deadline);
+                </body></html>
+                """.formatted(userName, bookTitle, bookAuthor, deadline);
     }
-
-
 
     @Override
     public PageResponse<BookLoanDTO> getMyBookLoans(BookLoanStatus status, int page, int size) throws UserException {
         User currentUser = userService.getCurrentUser();
         Page<BookLoan> bookLoanPage;
 
-        if(status !=null){
+        if (status != null) {
             // tra ve chi checkout active , sap xep theo due date
             Pageable pageable = PageRequest.of(page, size, Sort.by("dueDate").ascending());
             bookLoanPage = bookLoanRepository.findByStatusAndUser(
-                    status, currentUser, pageable
-            );
+                    status, currentUser, pageable);
 
-        }else{
+        } else {
             Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
             bookLoanPage = bookLoanRepository.findByUserId(currentUser.getId(), pageable);
         }
@@ -467,38 +523,49 @@ public class BookLoanServiceImpl implements BookLoanService {
     }
 
     @Override
-    public PageResponse<BookLoanDTO> getBookLoans(BookLoanSearchRequest searchRequest){
+    public PageResponse<BookLoanDTO> getBookLoans(BookLoanSearchRequest searchRequest) {
 
         Pageable pageable = createPageable(
                 searchRequest.getPage(),
                 searchRequest.getSize(),
                 searchRequest.getSortBy(),
-                searchRequest.getSortDirection()
-        );
+                searchRequest.getSortDirection());
         Page<BookLoan> bookLoanPage;
 
-        if(Boolean.TRUE.equals(searchRequest.getOverdueOnly())){
+        if (searchRequest.getStartDate() != null && searchRequest.getEndDate() != null) {
+            if (searchRequest.getStatus() != null) {
+                // Có cả status + dateRange
+                bookLoanPage = bookLoanRepository.findBookLoansByDateRangeAndStatus(
+                        searchRequest.getStartDate(),
+                        searchRequest.getEndDate(),
+                        searchRequest.getStatus(),
+                        pageable);
+            } else {
+                bookLoanPage = bookLoanRepository.findBookLoansByDateRange(
+                        searchRequest.getStartDate(),
+                        searchRequest.getEndDate(),
+                        pageable);
+            }
+        } else if (Boolean.TRUE.equals(searchRequest.getOverdueOnly())) {
             bookLoanPage = bookLoanRepository.findOverdueBookLoans(LocalDate.now(), pageable);
         }
 
-        else if(searchRequest.getUserId() != null){
+        else if (searchRequest.getUserId() != null) {
             bookLoanPage = bookLoanRepository.findByUserId(searchRequest.getUserId(), pageable);
 
-        }else if (searchRequest.getBookId() != null) {
+        } else if (searchRequest.getBookId() != null) {
             bookLoanPage = bookLoanRepository.findByBookId(searchRequest.getBookId(), pageable);
 
-        }else if (searchRequest.getStatus() != null) {
+        } else if (searchRequest.getStatus() != null) {
             bookLoanPage = bookLoanRepository.findByStatus(searchRequest.getStatus(), pageable);
 
-        }else if (searchRequest.getStartDate()!= null && searchRequest.getEndDate() !=null) {
-           bookLoanPage =bookLoanRepository.findBookLoansByDateRange(
-                   searchRequest.getStartDate(),
-                   searchRequest.getEndDate(),
-                   pageable
-           );
-        }
-        else {
-            //mac dinh tra ve tat ca loan
+        } else if (searchRequest.getStartDate() != null && searchRequest.getEndDate() != null) {
+            bookLoanPage = bookLoanRepository.findBookLoansByDateRange(
+                    searchRequest.getStartDate(),
+                    searchRequest.getEndDate(),
+                    pageable);
+        } else {
+            // mac dinh tra ve tat ca loan
             bookLoanPage = bookLoanRepository.findAll(pageable);
         }
         /// convert entities to dto and wrap in response obj
@@ -508,16 +575,16 @@ public class BookLoanServiceImpl implements BookLoanService {
 
     @Override
     public int updateOverdueBookLoan() {
-        Pageable pageable = PageRequest.of(0,1000);
+        Pageable pageable = PageRequest.of(0, 1000);
         Page<BookLoan> overduePage = bookLoanRepository.findOverdueBookLoans(LocalDate.now(), pageable);
-        int updateCount =0;
-        for(BookLoan bookLoan : overduePage.getContent()){
-            if(bookLoan.getStatus()==BookLoanStatus.CHECK_OUT){
+        int updateCount = 0;
+        for (BookLoan bookLoan : overduePage.getContent()) {
+            if (bookLoan.getStatus() == BookLoanStatus.CHECK_OUT) {
                 bookLoan.setStatus(BookLoanStatus.OVERDUE);
                 bookLoan.setIsOverDue(true);
-                //tinh ngay qua han overdue
+                // tinh ngay qua han overdue
                 int overdueDays = calculateOverdueDate(
-                        bookLoan.getDueDate(),LocalDate.now());
+                        bookLoan.getDueDate(), LocalDate.now());
                 bookLoan.setOverdueDays(overdueDays);
                 bookLoanRepository.save(bookLoan);
 
@@ -528,16 +595,18 @@ public class BookLoanServiceImpl implements BookLoanService {
         }
         return updateCount;
     }
-    private Pageable createPageable(int page , int size , String sortBy, String sortDirection){
+
+    private Pageable createPageable(int page, int size, String sortBy, String sortDirection) {
         size = Math.min(size, 10);
         size = Math.max(size, 1);
-        Sort sort= sortDirection.equalsIgnoreCase("ASC")
-                ?Sort.by(sortBy).ascending():Sort.by(sortBy).descending();
+        Sort sort = sortDirection.equalsIgnoreCase("ASC")
+                ? Sort.by(sortBy).ascending()
+                : Sort.by(sortBy).descending();
         return PageRequest.of(page, size, sort);
 
     }
 
-    public PageResponse<BookLoanDTO> convertToPageResponse(Page<BookLoan> bookLoanPage){
+    public PageResponse<BookLoanDTO> convertToPageResponse(Page<BookLoan> bookLoanPage) {
         List<BookLoanDTO> bookLoanDTOS = bookLoanPage.getContent()
                 .stream()
                 .map(bookLoanMapper::toDTO)
@@ -551,32 +620,31 @@ public class BookLoanServiceImpl implements BookLoanService {
                 bookLoanPage.getTotalPages(),
                 bookLoanPage.isLast(),
                 bookLoanPage.isFirst(),
-                bookLoanPage.isEmpty()
-        );
+                bookLoanPage.isEmpty());
     }
 
-    public int calculateOverdueDate(LocalDate dueDate, LocalDate today){
-        if(today.isBefore(dueDate) || today.isEqual(dueDate)){
+    public int calculateOverdueDate(LocalDate dueDate, LocalDate today) {
+        if (today.isBefore(dueDate) || today.isEqual(dueDate)) {
             return 0;
         }
         return (int) ChronoUnit.DAYS.between(dueDate, today);
     }
 
-
     private void sendReturnConfirmationEmail(BookLoan bookLoan,
-                                             BookLoanStatus condition,
-                                             String fineMessage,
-                                             BigDecimal fineAmount) {
+            BookLoanStatus condition,
+            String fineMessage,
+            BigDecimal fineAmount) {
         try {
             String userEmail = bookLoan.getUser().getEmail();
             String userName = bookLoan.getUser().getFullName() != null
-                    ? bookLoan.getUser().getFullName() : userEmail;
+                    ? bookLoan.getUser().getFullName()
+                    : userEmail;
             String bookTitle = bookLoan.getBook().getTitle();
 
             boolean hasFine = fineMessage != null;
             String subject = hasFine
-                    ? "⚠️ Thông báo vi phạm trả sách: " + bookTitle
-                    : "✅ Xác nhận trả sách thành công: " + bookTitle;
+                    ? "Thông báo vi phạm trả sách: " + bookTitle
+                    : "Xác nhận trả sách thành công: " + bookTitle;
 
             emailService.sendEmail(userEmail, subject,
                     buildReturnEmailBody(userName, bookTitle, fineMessage, fineAmount));
@@ -587,10 +655,10 @@ public class BookLoanServiceImpl implements BookLoanService {
     }
 
     private String buildReturnEmailBody(String userName, String bookTitle,
-                                        String fineMessage, BigDecimal fineAmount) {
+            String fineMessage, BigDecimal fineAmount) {
         boolean hasFine = fineMessage != null;
         String statusColor = hasFine ? "#dc2626" : "#16a34a";
-        String statusText  = hasFine ? "Vi phạm" : "Trả thành công";
+        String statusText = hasFine ? "Vi phạm" : "Trả thành công";
 
         String fineBlock = "";
         if (hasFine) {
@@ -598,67 +666,67 @@ public class BookLoanServiceImpl implements BookLoanService {
                     ? "Số tiền phạt: <strong>" + fineAmount + " VNĐ</strong>"
                     : "Vui lòng liên hệ thư viện để biết thêm chi tiết.";
             fineBlock = """
-            <div style="background:#fef2f2;border:1.5px solid #fecaca;
-                        border-radius:12px;padding:16px 20px;margin-top:16px;">
-              <div style="font-size:0.72rem;font-weight:700;color:#dc2626;margin-bottom:6px;">
-                ⚠️ Thông báo phạt
-              </div>
-              <div style="font-size:0.88rem;color:#7f1d1d;line-height:1.6;">
-                Lý do: <strong>%s</strong><br/>%s
-              </div>
-            </div>
-            """.formatted(fineMessage, amountLine);
+                    <div style="background:#fef2f2;border:1.5px solid #fecaca;
+                                border-radius:12px;padding:16px 20px;margin-top:16px;">
+                      <div style="font-size:0.72rem;font-weight:700;color:#dc2626;margin-bottom:6px;">
+                        ⚠️ Thông báo phạt
+                      </div>
+                      <div style="font-size:0.88rem;color:#7f1d1d;line-height:1.6;">
+                        Lý do: <strong>%s</strong><br/>%s
+                      </div>
+                    </div>
+                    """.formatted(fineMessage, amountLine);
         }
 
         return """
-        <!DOCTYPE html><html lang="vi"><head><meta charset="UTF-8"/></head>
-        <body style="margin:0;padding:0;background:#f5f0e8;
-                     font-family:'Segoe UI',Arial,sans-serif;">
-          <table width="100%%" cellpadding="0" cellspacing="0" style="padding:40px 20px;">
-            <tr><td align="center">
-              <table width="560" cellpadding="0" cellspacing="0"
-                style="background:#fff;border-radius:20px;overflow:hidden;
-                       box-shadow:0 4px 24px rgba(0,0,0,0.08);">
-                <tr>
-                  <td style="background:linear-gradient(135deg,#1a1a2e,#2d1b00);
-                             padding:32px 40px;text-align:center;">
-                    <h1 style="margin:0;color:#f5f0e8;font-size:1.4rem;font-weight:800;">
-                      Sách<em style="color:#c8956c;">Hay</em>
-                    </h1>
-                  </td>
-                </tr>
-                <tr>
-                  <td style="padding:32px 40px;">
-                    <p style="margin:0 0 14px;color:#555;font-size:0.95rem;">
-                      Xin chào <strong style="color:#1a1a1a;">%s</strong>,
-                    </p>
-                    <div style="background:#fafafa;border:1.5px solid rgba(0,0,0,0.08);
-                                border-radius:12px;padding:18px 22px;">
-                      <div style="font-size:0.62rem;font-weight:700;color:#c8956c;
-                                  text-transform:uppercase;margin-bottom:6px;">
-                        Thông tin sách
-                      </div>
-                      <div style="font-size:1rem;font-weight:800;color:#1a1a1a;
-                                  margin-bottom:6px;">%s</div>
-                      <div style="font-size:0.82rem;color:%s;font-weight:700;">
-                        Trạng thái: %s
-                      </div>
-                    </div>
-                    %s
-                  </td>
-                </tr>
-                <tr>
-                  <td style="background:#fafafa;border-top:1px solid rgba(0,0,0,0.06);
-                             padding:18px 40px;text-align:center;">
-                    <p style="margin:0;color:#ccc;font-size:0.72rem;">
-                      © 2025 SáchHay · Email tự động, vui lòng không trả lời.
-                    </p>
-                  </td>
-                </tr>
-              </table>
-            </td></tr>
-          </table>
-        </body></html>
-        """.formatted(userName, bookTitle, statusColor, statusText, fineBlock);
+                <!DOCTYPE html><html lang="vi"><head><meta charset="UTF-8"/></head>
+                <body style="margin:0;padding:0;background:#f5f0e8;
+                             font-family:'Segoe UI',Arial,sans-serif;">
+                  <table width="100%%" cellpadding="0" cellspacing="0" style="padding:40px 20px;">
+                    <tr><td align="center">
+                      <table width="560" cellpadding="0" cellspacing="0"
+                        style="background:#fff;border-radius:20px;overflow:hidden;
+                               box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+                        <tr>
+                          <td style="background:linear-gradient(135deg,#1a1a2e,#2d1b00);
+                                     padding:32px 40px;text-align:center;">
+                            <h1 style="margin:0;color:#f5f0e8;font-size:1.4rem;font-weight:800;">
+                              Sách<em style="color:#c8956c;">Hay</em>
+                            </h1>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td style="padding:32px 40px;">
+                            <p style="margin:0 0 14px;color:#555;font-size:0.95rem;">
+                              Xin chào <strong style="color:#1a1a1a;">%s</strong>,
+                            </p>
+                            <div style="background:#fafafa;border:1.5px solid rgba(0,0,0,0.08);
+                                        border-radius:12px;padding:18px 22px;">
+                              <div style="font-size:0.62rem;font-weight:700;color:#c8956c;
+                                          text-transform:uppercase;margin-bottom:6px;">
+                                Thông tin sách
+                              </div>
+                              <div style="font-size:1rem;font-weight:800;color:#1a1a1a;
+                                          margin-bottom:6px;">%s</div>
+                              <div style="font-size:0.82rem;color:%s;font-weight:700;">
+                                Trạng thái: %s
+                              </div>
+                            </div>
+                            %s
+                          </td>
+                        </tr>
+                        <tr>
+                          <td style="background:#fafafa;border-top:1px solid rgba(0,0,0,0.06);
+                                     padding:18px 40px;text-align:center;">
+                            <p style="margin:0;color:#ccc;font-size:0.72rem;">
+                              © 2025 SáchHay · Email tự động, vui lòng không trả lời.
+                            </p>
+                          </td>
+                        </tr>
+                      </table>
+                    </td></tr>
+                  </table>
+                </body></html>
+                """.formatted(userName, bookTitle, statusColor, statusText, fineBlock);
     }
 }

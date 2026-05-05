@@ -26,5 +26,14 @@ public interface SubscriptionRepository extends JpaRepository<Subscription,Long>
             @Param("today") LocalDate today
     );
 
+    @Query("select count(s) from Subscription s where s.isActive = true " +
+            "and s.startDate <= :today and s.endDate >= :today")
+    long countActiveSubscriptions(@Param("today") LocalDate today);
+
+    @Query("select s from Subscription s " +
+            "join fetch s.user " +
+            "join fetch s.plan")
+    List<Subscription> findAllWithUserAndPlan();
+
 
 }

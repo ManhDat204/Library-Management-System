@@ -28,6 +28,7 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 
@@ -75,6 +76,7 @@ public class FineServiceImpl implements FineService {
                 .gateway(com.dat.LibraryManagementSystem.domain.PaymentGateway.VNPay)
                 .amount(fine.getAmount().longValue())
                 .currency("VND")
+                .txnRef("FINE" + fine.getId() + "-" + UUID.randomUUID().toString().substring(0, 8))
                 .description("Thanh toán phí phạt - " + fine.getId()
                         + " - " + fine.getBookLoan().getBook().getTitle())
                 .build();
@@ -175,7 +177,7 @@ public class FineServiceImpl implements FineService {
     public PageResponse<FineDTO> getAllFines(FineStatus fineStatus, FineType fineType, Long userId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
 
-        Specification<Fine> spec = Specification.where((root, query, cb) -> null);
+        Specification<Fine> spec = Specification.where((root, query, cb) -> cb.isNull(root.get("deletedAt")));
 
         if (fineStatus != null) {
             spec = spec.and((root, query, cb) -> cb.equal(root.get("status"), fineStatus));
@@ -212,6 +214,14 @@ public class FineServiceImpl implements FineService {
     public Long getTotalPendingFines(Long userId) {
         BigDecimal sum = fineRepository.sumAmountByStatusAndUserId(FineStatus.PENDING, userId);
         return sum == null ? 0L : sum.longValue();
+    }
+
+    @Override
+    public void deleteFine(Long id) throws Exception {
+        Fine fine = fineRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Fine not found"));
+        fine.setDeletedAt(LocalDateTime.now());
+        fineRepository.save(fine);
     }
 }
 

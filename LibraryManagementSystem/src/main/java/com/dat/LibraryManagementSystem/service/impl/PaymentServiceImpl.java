@@ -86,7 +86,7 @@ public class PaymentServiceImpl implements PaymentService {
         payment.setPaymentStatus(PaymentStatus.PENDING);
         payment.setInitiatedAt(LocalDateTime.now());
         payment.setTransactionId("" + UUID.randomUUID());
-
+        payment.setFineId(dto.getFineId());
         Payment saved = paymentRepository.save(payment);
         return paymentMapper.toDTO(saved);
     }
@@ -136,6 +136,10 @@ public class PaymentServiceImpl implements PaymentService {
         String secureHash = parameters.get("vnp_SecureHash");
         String generatedHash = generateVnpHash(parameters);
 
+        log.info("[VNPAY] secureHash:   {}", secureHash);
+        log.info("[VNPAY] generatedHash:{}", generatedHash);
+        log.info("[VNPAY] match: {}", Objects.equals(secureHash, generatedHash));
+        log.info("[VNPAY] fineId: {}", parameters.get("vnp_TxnRef"));
 
         if (!Objects.equals(secureHash, generatedHash)) {
             log.warn("hash mismatch {} vs {}", secureHash, generatedHash);
@@ -155,7 +159,10 @@ public class PaymentServiceImpl implements PaymentService {
             // thanh toan fine set pending-> paid
             if (payment.getPaymentType() == PaymentType.FINE
                     && payment.getFineId() != null) {
+                log.info("[VNPAY] paymentType: {}", payment.getPaymentType());
+                log.info("[VNPAY] fineId from payment: {}", payment.getFineId());
                 fineRepository.findById(payment.getFineId()).ifPresent(fine -> {
+                    log.info("[VNPAY] fine status: {}", fine.getStatus());
                     if (fine.getStatus() == FineStatus.PENDING) {
                         fine.setStatus(FineStatus.PAID);
                         fine.setPaidAt(LocalDateTime.now());
@@ -163,6 +170,9 @@ public class PaymentServiceImpl implements PaymentService {
                         log.info("Fine #{} đã được set PAID sau VNPay callback thành công", fine.getId());
                     }
                 });
+            }else {
+                log.warn("[VNPAY] Không vào nhánh FINE: type={}, fineId={}",
+                        payment.getPaymentType(), payment.getFineId());
             }
             if (payment.getPaymentType() == PaymentType.WALLET_DEPOSIT) {
                 walletService.deposit(

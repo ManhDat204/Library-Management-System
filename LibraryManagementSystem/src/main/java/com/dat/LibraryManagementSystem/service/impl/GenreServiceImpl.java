@@ -4,11 +4,15 @@ import com.dat.LibraryManagementSystem.exception.GenreException;
 import com.dat.LibraryManagementSystem.mapper.GenreMapper;
 import com.dat.LibraryManagementSystem.model.Genre;
 import com.dat.LibraryManagementSystem.payload.dto.GenreDTO;
+import com.dat.LibraryManagementSystem.payload.request.GenreSearchRequest;
+import com.dat.LibraryManagementSystem.payload.response.PageResponse;
 import com.dat.LibraryManagementSystem.repository.GenreRepository;
 import com.dat.LibraryManagementSystem.service.GenreService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -53,10 +57,12 @@ public class GenreServiceImpl implements GenreService {
     }
 
     @Override
+
     public void deleteGenre(Long genreId) throws GenreException {
         Genre existingGenre = genreRepository.findById(genreId)
                 .orElseThrow(() -> new GenreException("Thể loại không tồn tại"));
-        genreRepository.delete(existingGenre);
+        existingGenre.setActive(false);  // ✅ SOFT DELETE
+        genreRepository.save(existingGenre);
     }
 
     @Override
@@ -113,5 +119,36 @@ public class GenreServiceImpl implements GenreService {
     @Override
     public long getBookCountByGenres(Long genreId) {
         return genreRepository.countBooksByGenre(genreId);
+    }
+
+    @Override
+    public PageResponse<GenreDTO> searchGenres(GenreSearchRequest request) {
+        Sort sort = Sort.by(
+                "DESC".equalsIgnoreCase(request.getSortDirection())
+                        ? Sort.Direction.DESC
+                        : Sort.Direction.ASC,
+                request.getSortBy()
+        );
+        Pageable pageable = PageRequest.of(request.getPage(), request.getSize(), sort);
+
+        Page<Genre> page;
+        if (request.getSearchTerm() != null && !request.getSearchTerm().trim().isEmpty()) {
+            page = genreRepository.findByNameContainingIgnoreCase(request.getSearchTerm(), pageable);
+        } else {
+            page = genreRepository.findAll(pageable);
+        }
+
+        return new PageResponse<>(
+                page.getContent().stream()
+                        .map(genreMapper::toDTO)
+                        .collect(Collectors.toList()),
+                page.getNumber(),
+                page.getSize(),
+                page.getTotalElements(),
+                page.getTotalPages(),
+                page.isLast(),
+                page.isFirst(),
+                page.isEmpty()
+        );
     }
 }

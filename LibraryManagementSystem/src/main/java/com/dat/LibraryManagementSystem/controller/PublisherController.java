@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
@@ -25,7 +26,7 @@ public class PublisherController {
 
     @PutMapping("/{id}")
     public ResponseEntity<PublisherDTO> update(@PathVariable Long id,
-                                               @RequestBody @Valid PublisherDTO dto) {
+            @RequestBody @Valid PublisherDTO dto) {
         return ResponseEntity.ok(publisherService.updatePublisher(id, dto));
     }
 
@@ -35,8 +36,14 @@ public class PublisherController {
     }
 
     @GetMapping
-    public ResponseEntity<List<PublisherDTO>> getAll() {
-        return ResponseEntity.ok(publisherService.getAll());
+    public ResponseEntity<?> getAll(
+            @RequestParam(required = false) String searchTerm,
+            @RequestParam(required = false) String address,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+
+        // Luôn dùng searchPublishers để đảm bảo format tương thích
+        return ResponseEntity.ok(publisherService.searchPublishers(searchTerm, address, page, size));
     }
 
     @DeleteMapping("/{id}")

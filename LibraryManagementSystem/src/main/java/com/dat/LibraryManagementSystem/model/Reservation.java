@@ -30,6 +30,7 @@ public class Reservation {
     private Book book;
 
     @Enumerated(EnumType.STRING)
+    @Builder.Default
     private ReservationStatus status= ReservationStatus.PENDING;
 
     private LocalDateTime reservedAt;
@@ -46,6 +47,7 @@ public class Reservation {
     private  Integer queuePosition;
 
     @Column(name = "notification_sent", nullable = false)
+    @Builder.Default
     private  Boolean notificationSent = false;
 
     @Column(columnDefinition = "TEXT")

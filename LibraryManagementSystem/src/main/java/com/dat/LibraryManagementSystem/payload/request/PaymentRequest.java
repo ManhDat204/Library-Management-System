@@ -31,6 +31,7 @@ public class PaymentRequest {
     private Long amount;
 
     @Size(min = 3, max = 3, message = "Loai tien te phai la VND")
+    @Builder.Default
     private String currency="VND";
 
     @Size(max = 500, message = "Loai tien te phai la VND")

@@ -133,6 +133,27 @@ public class WalletServiceImpl implements WalletService {
     }
 
     @Override
+    @Transactional
+    public void deductBalance(Long userId, BigDecimal amount, String reason) {
+        Wallet wallet = findWalletWithLock(userId);
+
+        if (wallet.getBalance().compareTo(amount) < 0) {
+            throw new RuntimeException(
+                    "Số dư ví không đủ. " +
+                            "Cần: " + amount + " VND, " +
+                            "Hiện có: " + wallet.getBalance() + " VND");
+        }
+
+        wallet.setBalance(wallet.getBalance().subtract(amount));
+        walletRepository.save(wallet);
+
+        saveTransaction(wallet, WalletTransactionType.PENALTY, amount,
+                null, null, reason);
+
+        log.info("[WALLET] DEDUCT {} ← user {} - {}", amount, userId, reason);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public Page<WalletTransactionDTO> getMyTransactions(Pageable pageable) throws UserException {
         User user = userService.getCurrentUser();

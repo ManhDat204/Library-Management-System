@@ -35,12 +35,14 @@ public class Genre {
     private String description;
 
     @Column(nullable = false)
+    @Builder.Default
     private Boolean active=true;
 
     @ManyToOne
     private Genre parentGenre;
 
     @OneToMany
+    @Builder.Default
     private List<Genre> subGenres= new ArrayList<Genre>();
 
 //    @OneToMany(mappedBy = "Genre", cascade = CascadeType.PERSIST)

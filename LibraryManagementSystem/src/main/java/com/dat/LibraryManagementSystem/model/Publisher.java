@@ -29,7 +29,17 @@ public class Publisher {
     private String country;
 
     @Column(nullable = false)
+    @Builder.Default
     private Boolean active = true;
+
+    @Column(length = 500)
+    private String address;
+
+    @Column(length = 20)
+    private String phone;
+
+    @Column(length = 100)
+    private String email;
 
     @CreationTimestamp
     @Column(nullable = false)

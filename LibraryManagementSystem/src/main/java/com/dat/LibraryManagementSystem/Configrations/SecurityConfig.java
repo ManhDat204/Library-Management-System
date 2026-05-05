@@ -50,9 +50,10 @@ public class SecurityConfig {
             public CorsConfiguration getCorsConfiguration(HttpServletRequest request) {
                 CorsConfiguration cfg = new CorsConfiguration();
                 cfg.setAllowCredentials(true);
-                cfg.setAllowedOrigins(
+                cfg.setAllowedOriginPatterns(
                         Arrays.asList(
-                                "http://localhost:5173",
+                                "http://localhost:*",
+                                "http://127.0.0.1:*",
                                 "http://dat.com")
 
                 );

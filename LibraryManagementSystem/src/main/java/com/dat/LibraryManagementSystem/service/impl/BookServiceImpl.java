@@ -7,6 +7,7 @@ import com.dat.LibraryManagementSystem.payload.dto.BookDTO;
 import com.dat.LibraryManagementSystem.payload.request.BookSearchRequest;
 import com.dat.LibraryManagementSystem.payload.response.PageResponse;
 import com.dat.LibraryManagementSystem.repository.BookRepository;
+import com.dat.LibraryManagementSystem.repository.BookReviewRepository;
 import com.dat.LibraryManagementSystem.service.BookService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -24,6 +25,7 @@ import java.util.stream.Collectors;
 public class BookServiceImpl implements BookService {
 
     private final BookRepository bookRepository;
+    private final BookReviewRepository bookReviewRepository;
     private final BookMapper bookMapper;
 
     @Override
@@ -140,6 +142,27 @@ public class BookServiceImpl implements BookService {
                     return dto;
                 })
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<BookDTO> getTopRatedBooks(int limit) {
+        return bookReviewRepository.findTopRatedBooks(PageRequest.of(0, limit)).stream()
+                .map(row -> {
+                    Book book = (Book) row[0];
+                    double averageRating = ((Number) row[1]).doubleValue();
+                    long totalReviews = ((Number) row[2]).longValue();
+
+                    BookDTO dto = bookMapper.toDTO(book);
+                    dto.setAverageRating(roundToOneDecimal(averageRating));
+                    dto.setRoundedRating(Math.round(averageRating * 2.0) / 2.0);
+                    dto.setTotalReviews(totalReviews);
+                    return dto;
+                })
+                .collect(Collectors.toList());
+    }
+
+    private double roundToOneDecimal(double value) {
+        return Math.round(value * 10.0) / 10.0;
     }
 
     private Pageable createPageable(int page, int size, String sortBy, String sortDirection) {

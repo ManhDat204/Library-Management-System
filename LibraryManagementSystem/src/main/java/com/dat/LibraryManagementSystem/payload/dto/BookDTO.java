@@ -35,6 +35,9 @@ public class BookDTO {
     private String genreCode;
 
     private Long totalLoans;
+    private Double averageRating;
+    private Double roundedRating;
+    private Long totalReviews;
 
 
     private Long publisherId;

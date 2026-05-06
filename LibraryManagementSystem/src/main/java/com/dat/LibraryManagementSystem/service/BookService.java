@@ -26,6 +26,7 @@ public interface BookService {
     Long getTotalActiveBooks();
     Long getTotalAvailableBooks();
     List<BookDTO> getTopBorrowedBooks(int limit);
+    List<BookDTO> getTopRatedBooks(int limit);
 
 
 

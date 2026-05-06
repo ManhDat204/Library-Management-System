@@ -85,6 +85,13 @@ public class BookController {
         return ResponseEntity.ok(books);
     }
 
+    @GetMapping("/top-rated")
+    public ResponseEntity<List<BookDTO>> getTopRatedBooks(
+            @RequestParam(defaultValue = "5") int limit) {
+        List<BookDTO> books = bookService.getTopRatedBooks(limit);
+        return ResponseEntity.ok(books);
+    }
+
     @GetMapping
     public ResponseEntity<PageResponse<BookDTO>> searchBooks(
             @RequestParam(required = false) Long genreId,

@@ -68,4 +68,10 @@ public interface BookRepository extends JpaRepository<Book, Long> {
         @Query("SELECT b FROM Book b WHERE b.genre.id = :genreId AND b.active = true")
         List<Book> findByGenreId(@Param("genreId") Long genreId);
 
+        @Query("SELECT b FROM Book b " +
+                        "LEFT JOIN FETCH b.author " +
+                        "LEFT JOIN FETCH b.genre " +
+                        "WHERE b.active = true ORDER BY b.createdAt DESC")
+        List<Book> findActiveBooksForChat(Pageable pageable);
+
 }

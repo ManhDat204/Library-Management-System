@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import PageHeader from "../../components/PageHeader"; 
 
 // ─── API CONFIG ───────────────────────────────────────────────
 const api = axios.create({ baseURL: "http://localhost:8080/api" });
@@ -593,20 +594,10 @@ export default function BooksPage() {
     : null;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-7xl ">
 
-      {/* HEADER */}
-      <div className="mb-8">
-        <h1
-          className="text-3xl font-extrabold text-zinc-900 tracking-tight"
-          style={{ fontFamily: "'Playfair Display',Georgia,serif" }}
-        >
-          {activeGenreName ? `Sách ${activeGenreName}` : "Tất cả sách"}
-        </h1>
-        <p className="text-zinc-400 text-sm mt-1">
-          Khám phá hàng ngàn đầu sách hấp dẫn dành cho bạn.
-        </p>
-      </div>
+        <PageHeader title={activeGenreName ? `Sách ${activeGenreName}` : "Tất cả sách"} />
+
 
       {/* TOOLBAR */}
       <div className="bg-white rounded-3xl p-3 mb-6 border border-zinc-100 shadow-sm flex flex-wrap items-center gap-3">

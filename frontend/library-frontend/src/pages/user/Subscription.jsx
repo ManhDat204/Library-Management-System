@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
+import PageHeader from "../../components/PageHeader"; 
 
 const api = axios.create({ baseURL: "http://localhost:8080/api" });
 api.interceptors.request.use((config) => {
@@ -8,7 +9,6 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// ─── HELPERS ──────────────────────────────────────────────────
 const fmtPrice = (price, currency) => {
   if (!price || price <= 0) return "Miễn phí";
   return Number(price).toLocaleString("vi-VN") + (currency ? ` ${currency}` : "₫");
@@ -21,7 +21,6 @@ const fmtDuration = (days) => {
   return `${days} ngày`;
 };
 
-// ─── TOAST ────────────────────────────────────────────────────
 const Toast = ({ message, type, onDone }) => {
   useEffect(() => { const t = setTimeout(onDone, 3000); return () => clearTimeout(t); }, []);
   return (
@@ -41,17 +40,14 @@ const Toast = ({ message, type, onDone }) => {
   );
 };
 
-// ─── CANCEL CONFIRM MODAL ─────────────────────────────────────
 const CancelModal = ({ planName, onConfirm, onClose, cancelling }) => {
   const [reason, setReason] = useState("");
-
   return (
     <div style={{
       position: "fixed", inset: 0, zIndex: 9998,
       background: "rgba(0,0,0,0.45)", backdropFilter: "blur(4px)",
       display: "flex", alignItems: "center", justifyContent: "center",
-      padding: "1rem",
-      animation: "fadeIn 0.2s ease",
+      padding: "1rem", animation: "fadeIn 0.2s ease",
     }}>
       <div style={{
         background: "#fff", borderRadius: 18, padding: "2rem",
@@ -69,7 +65,6 @@ const CancelModal = ({ planName, onConfirm, onClose, cancelling }) => {
         <p style={{ color: "#888", fontSize: "0.83rem", margin: "0 0 1.25rem", lineHeight: 1.6 }}>
           Sau khi hủy, bạn sẽ mất quyền mượn sách từ gói này. Hành động không thể hoàn tác.
         </p>
-
         <textarea
           placeholder="Lý do hủy (không bắt buộc)..."
           value={reason}
@@ -84,32 +79,21 @@ const CancelModal = ({ planName, onConfirm, onClose, cancelling }) => {
             background: "#fafafa",
           }}
         />
-
         <div style={{ display: "flex", gap: 10 }}>
-          <button
-            onClick={onClose}
-            disabled={cancelling}
-            style={{
-              flex: 1, padding: "10px", borderRadius: 10, border: "1px solid rgba(0,0,0,0.1)",
-              background: "#fff", color: "#1a1a1a", fontSize: "0.85rem", fontWeight: 600,
-              cursor: cancelling ? "not-allowed" : "pointer",
-              fontFamily: "'DM Sans',sans-serif",
-            }}
-          >
-            Giữ lại
-          </button>
-          <button
-            onClick={() => onConfirm(reason)}
-            disabled={cancelling}
-            style={{
-              flex: 1, padding: "10px", borderRadius: 10, border: "none",
-              background: "#e85d3f", color: "#fff", fontSize: "0.85rem", fontWeight: 700,
-              cursor: cancelling ? "not-allowed" : "pointer",
-              fontFamily: "'DM Sans',sans-serif",
-              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-              opacity: cancelling ? 0.7 : 1,
-            }}
-          >
+          <button onClick={onClose} disabled={cancelling} style={{
+            flex: 1, padding: "10px", borderRadius: 10, border: "1px solid rgba(0,0,0,0.1)",
+            background: "#fff", color: "#1a1a1a", fontSize: "0.85rem", fontWeight: 600,
+            cursor: cancelling ? "not-allowed" : "pointer",
+            fontFamily: "'DM Sans',sans-serif",
+          }}>Giữ lại</button>
+          <button onClick={() => onConfirm(reason)} disabled={cancelling} style={{
+            flex: 1, padding: "10px", borderRadius: 10, border: "none",
+            background: "#e85d3f", color: "#fff", fontSize: "0.85rem", fontWeight: 700,
+            cursor: cancelling ? "not-allowed" : "pointer",
+            fontFamily: "'DM Sans',sans-serif",
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+            opacity: cancelling ? 0.7 : 1,
+          }}>
             {cancelling ? (
               <>
                 <span style={{
@@ -131,21 +115,44 @@ const CancelModal = ({ planName, onConfirm, onClose, cancelling }) => {
 // ─── PLAN CARD ────────────────────────────────────────────────
 const PlanCard = ({ plan, isCurrent, onSubscribe, onCancelRequest, subscribingId }) => {
   const busy = subscribingId === plan.id;
+  const [hovered, setHovered] = useState(false);
 
   const rows = [
-    ["Thời hạn",             fmtDuration(plan.durationDays)],
-    ["Số sách được mượn",    plan.maxBooksAllowed != null ? `${plan.maxBooksAllowed} cuốn` : "—"],
-    ["Thời hạn mỗi cuốn",   plan.maxDaysPerBook  != null ? `${plan.maxDaysPerBook} ngày`  : "—"],
+    ["Thời hạn",           fmtDuration(plan.durationDays)],
+    ["Số sách được mượn",  plan.maxBooksAllowed != null ? `${plan.maxBooksAllowed} cuốn` : "—"],
+    ["Thời hạn mỗi cuốn",  plan.maxDaysPerBook  != null ? `${plan.maxDaysPerBook} ngày`  : "—"],
   ].filter(([, v]) => v && v !== "—");
 
+  // Border color logic:
+  // - active plan  → đậm #1a1a1a, 2px
+  // - hover        → #c8956c nhạt, 1px
+  // - default      → rgba(0,0,0,0.10), 1px
+  const borderStyle = isCurrent
+    ? "2px solid #1a1a1a"
+    : hovered
+      ? "1px solid #c8956c"
+      : "1px solid rgba(0,0,0,0.10)";
+
   return (
-    <div style={{
-      background: "#fff", borderRadius: 16,
-      border: isCurrent ? "2px solid #1a1a1a" : "1px solid rgba(0,0,0,0.08)",
-      padding: "1.5rem", display: "flex", flexDirection: "column",
-      fontFamily: "'DM Sans',sans-serif", position: "relative",
-    }}>
-      {/* Featured / badge text */}
+    <div
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        background: "#fff",
+        borderRadius: 16,
+        border: borderStyle,
+        padding: "1.5rem",
+        display: "flex",
+        flexDirection: "column",
+        fontFamily: "'DM Sans',sans-serif",
+        position: "relative",
+        transition: "border-color 0.2s ease, box-shadow 0.2s ease",
+        boxShadow: hovered && !isCurrent
+          ? "0 4px 16px rgba(200,149,108,0.10)"
+          : "none",
+      }}
+    >
+      {/* Badge */}
       {(plan.isFeatured || plan.badgeText) && (
         <div style={{
           position: "absolute", top: -1, right: 18,
@@ -158,13 +165,12 @@ const PlanCard = ({ plan, isCurrent, onSubscribe, onCancelRequest, subscribingId
         </div>
       )}
 
-      {/* Name + current badge */}
+      {/* Name */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 4 }}>
         <h3 style={{
           fontFamily: "'Playfair Display',serif",
           fontSize: "1.1rem", fontWeight: 800, color: "#1a1a1a", margin: 0,
         }}>{plan.name}</h3>
-        
       </div>
 
       {/* Plan code */}
@@ -187,7 +193,7 @@ const PlanCard = ({ plan, isCurrent, onSubscribe, onCancelRequest, subscribingId
         )}
       </div>
 
-      {/* Info rows */}
+      {/* Divider + info rows */}
       <div style={{ flex: 1, borderTop: "1px solid rgba(0,0,0,0.06)", marginBottom: "1.25rem" }}>
         {rows.map(([label, value]) => (
           <div key={label} style={{
@@ -206,10 +212,9 @@ const PlanCard = ({ plan, isCurrent, onSubscribe, onCancelRequest, subscribingId
         )}
       </div>
 
-      {/* Subscribe / Cancel buttons */}
+      {/* Action buttons */}
       {isCurrent ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {/* Đang sử dụng — disabled */}
           <button disabled style={{
             width: "100%", border: "none", borderRadius: 10, padding: "11px",
             fontFamily: "'DM Sans',sans-serif", fontSize: "0.88rem", fontWeight: 700,
@@ -218,7 +223,6 @@ const PlanCard = ({ plan, isCurrent, onSubscribe, onCancelRequest, subscribingId
           }}>
             ✓ Đang sử dụng
           </button>
-          {/* Nút hủy gói */}
           <button
             onClick={() => onCancelRequest(plan)}
             style={{
@@ -272,33 +276,26 @@ const PlanCard = ({ plan, isCurrent, onSubscribe, onCancelRequest, subscribingId
   );
 };
 
+const getUserIdFromStorage = () => localStorage.getItem("userId") ?? null;
 
-const getUserIdFromStorage = () => {
-  return localStorage.getItem("userId") ?? null;
-};
-
-// ─── MAIN ─────────────────────────────────────────────────────
 export default function SubscriptionPage() {
-  const [plans, setPlans]                         = useState([]);
-  const [loading, setLoading]                     = useState(true);
-  const [error, setError]                         = useState(null);
-  const [currentPlanId, setCurrentPlanId]         = useState(null);
-  const [currentSubscriptionId, setCurrentSubscriptionId] = useState(null); // ← MỚI
-  const [subscribingId, setSubscribingId]         = useState(null);
-  const [toast, setToast]                         = useState(null);
-  const [cancelTarget, setCancelTarget]           = useState(null); // plan đang chờ xác nhận hủy
-  const [cancelling, setCancelling]               = useState(false);
+  const [plans, setPlans]                                   = useState([]);
+  const [loading, setLoading]                               = useState(true);
+  const [error, setError]                                   = useState(null);
+  const [currentPlanId, setCurrentPlanId]                   = useState(null);
+  const [currentSubscriptionId, setCurrentSubscriptionId]   = useState(null);
+  const [subscribingId, setSubscribingId]                   = useState(null);
+  const [toast, setToast]                                   = useState(null);
+  const [cancelTarget, setCancelTarget]                     = useState(null);
+  const [cancelling, setCancelling]                         = useState(false);
 
-  useEffect(() => {
-    fetchPlans();
-    fetchCurrentPlan();
-  }, []);
+  useEffect(() => { fetchPlans(); fetchCurrentPlan(); }, []);
 
   const fetchCurrentPlan = async () => {
     try {
       const res = await api.get("/subscriptions/user/active");
       setCurrentPlanId(res.data?.planId ?? null);
-      setCurrentSubscriptionId(res.data?.id ?? null); // ← lưu subscriptionId
+      setCurrentSubscriptionId(res.data?.id ?? null);
     } catch {
       setCurrentPlanId(null);
       setCurrentSubscriptionId(null);
@@ -309,28 +306,20 @@ export default function SubscriptionPage() {
     try {
       setLoading(true); setError(null);
       const res = await api.get("/subscription-plans");
-      const data = res.data || [];
-      const sorted = [...data].sort((a, b) => (a.displayOrder ?? 99) - (b.displayOrder ?? 99));
+      const sorted = [...(res.data || [])].sort((a, b) => (a.displayOrder ?? 99) - (b.displayOrder ?? 99));
       setPlans(sorted);
     } catch (err) {
       setError(err.response?.data?.message || "Không thể tải danh sách gói.");
     } finally { setLoading(false); }
   };
 
-  // ─── HỦY GÓI ────────────────────────────────────────────────
-  const handleCancelRequest = (plan) => {
-    setCancelTarget(plan);
-  };
+  const handleCancelRequest = (plan) => setCancelTarget(plan);
 
   const handleCancelConfirm = async (reason) => {
     if (!currentSubscriptionId) return;
     setCancelling(true);
     try {
-      await api.post(
-        `/subscriptions/cancel/${currentSubscriptionId}`,
-        null,
-        { params: reason ? { reason } : {} }
-      );
+      await api.post(`/subscriptions/cancel/${currentSubscriptionId}`, null, { params: reason ? { reason } : {} });
       setCurrentPlanId(null);
       setCurrentSubscriptionId(null);
       setCancelTarget(null);
@@ -340,47 +329,26 @@ export default function SubscriptionPage() {
     } finally { setCancelling(false); }
   };
 
-  // ─── ĐĂNG KÝ GÓI ────────────────────────────────────────────
   const handleSubscribe = async (plan) => {
     if (subscribingId !== null) return;
-
     const userId = getUserIdFromStorage();
-    if (!userId) {
-      setToast({ message: "Vui lòng đăng nhập lại.", type: "error" });
-      return;
-    }
-
+    if (!userId) { setToast({ message: "Vui lòng đăng nhập lại.", type: "error" }); return; }
     setSubscribingId(plan.id);
     try {
-      const subRes = await api.post("/subscriptions/subscribe", {
-        userId: Number(userId),
-        planId: plan.id,
-      });
-
+      const subRes = await api.post("/subscriptions/subscribe", { userId: Number(userId), planId: plan.id });
       const notes = subRes.data?.notes ?? "";
       const match = notes.match(/paymentId=(\d+)/);
       if (!match) {
         const directPaymentId = subRes.data?.paymentId;
-        if (!directPaymentId) {
-          setToast({ message: "Không lấy được paymentId. Kiểm tra backend trả về notes.", type: "error" });
-          return;
-        }
+        if (!directPaymentId) { setToast({ message: "Không lấy được paymentId.", type: "error" }); return; }
         const urlRes2 = await api.get(`/payments/${directPaymentId}/url`);
         const url2 = urlRes2.data?.message;
         if (url2 && url2.startsWith("http")) { window.location.href = url2; return; }
-        setToast({ message: "Không thể tạo link thanh toán.", type: "error" });
-        return;
+        setToast({ message: "Không thể tạo link thanh toán.", type: "error" }); return;
       }
-      const paymentId = match[1];
-
-      const urlRes = await api.get(`/payments/${paymentId}/url`);
+      const urlRes = await api.get(`/payments/${match[1]}/url`);
       const paymentUrl = urlRes.data?.message;
-
-      if (paymentUrl && paymentUrl.startsWith("http")) {
-        window.location.href = paymentUrl;
-        return;
-      }
-
+      if (paymentUrl && paymentUrl.startsWith("http")) { window.location.href = paymentUrl; return; }
       setToast({ message: "Không thể tạo link thanh toán.", type: "error" });
     } catch (err) {
       setToast({ message: err.response?.data?.message || "Đăng ký thất bại.", type: "error" });
@@ -402,27 +370,12 @@ export default function SubscriptionPage() {
         @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
       `}</style>
 
-      <div style={{
-        maxWidth: 900, margin: "0 auto", padding: "2rem 1.5rem",
-        fontFamily: "'DM Sans',sans-serif",
-      }}>
-
-        {/* Header */}
-        <div style={{ marginBottom: "1.75rem" }}>
-          <h1 style={{
-            fontFamily: "'Playfair Display',serif",
-            fontSize: "1.65rem", fontWeight: 800, color: "#1a1a1a", margin: "0 0 5px",
-          }}>Gói đăng ký</h1>
-          <p style={{ color: "#aaa", fontSize: "0.85rem", margin: 0 }}>
-            Chọn gói phù hợp để bắt đầu mượn sách
-          </p>
-        </div>
+      <div style={{ maxWidth: 900, margin: "0 auto", padding: "2rem 1.5rem", fontFamily: "'DM Sans',sans-serif" }}>
+        <PageHeader title="Gói đăng ký" />
 
         {loading ? (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(250px,1fr))", gap: "1.25rem" }}>
-            {Array(3).fill(0).map((_, i) => (
-              <div key={i} className="skeleton" style={{ height: 300 }} />
-            ))}
+            {Array(3).fill(0).map((_, i) => <div key={i} className="skeleton" style={{ height: 300 }} />)}
           </div>
         ) : error ? (
           <div style={{
@@ -443,11 +396,7 @@ export default function SubscriptionPage() {
             color: "#ccc", fontSize: "0.88rem",
           }}>Hiện chưa có gói nào.</div>
         ) : (
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill,minmax(250px,1fr))",
-            gap: "1.25rem",
-          }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(250px,1fr))", gap: "1.25rem" }}>
             {plans.map(plan => (
               <PlanCard
                 key={plan.id}
@@ -462,7 +411,6 @@ export default function SubscriptionPage() {
         )}
       </div>
 
-      {/* Modal xác nhận hủy */}
       {cancelTarget && (
         <CancelModal
           planName={cancelTarget.name}

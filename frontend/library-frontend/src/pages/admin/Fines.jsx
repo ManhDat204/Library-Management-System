@@ -2,22 +2,26 @@ import { useState, useEffect, useCallback } from "react";
 import {
   Search, Eye, CheckCircle, Ban, RefreshCw,
   ChevronLeft, ChevronRight, Filter, X, AlertCircle,
-  Clock, DollarSign, Loader2
+  Clock, DollarSign, Loader2, Trash2
 } from "lucide-react";
-import axios from "axios";
 
+// Import common components
+import Toast from "../../components/common/Toast";
+import ConfirmDialog from "../../components/common/ConfirmDialog";
 
-const BASE = "http://localhost:8080";
+// Import services
+import { fineService } from "../../services/fineService";
+
 
 const STATUS_META = {
-  PENDING: { label: "Chưa thanh toán", color: "bg-amber-100 text-amber-700 border-amber-200",       icon: Clock },
-  PAID:    { label: "Đã thanh toán",   color: "bg-emerald-100 text-emerald-700 border-emerald-200", icon: CheckCircle },
-  WAIVED:  { label: "Đã miễn phí",     color: "bg-sky-100 text-sky-700 border-sky-200",             icon: Ban },
+  PENDING: { label: "Chưa thanh toán", color: " text-amber-700 border-amber-200",       icon: Clock },
+  PAID:    { label: "Đã thanh toán",   color: "text-emerald-700 border-emerald-200", icon: CheckCircle },
+  WAIVED:  { label: "Đã miễn phí",     color: " text-sky-700 border-sky-200",             icon: Ban },
 };
 
 const TYPE_META = {
   OVERDUE:    { label: "Quá hạn",     color: "bg-red-50 text-red-600" },
-  PROCESSING: { label: "Xử lý chậm", color: "bg-orange-50 text-orange-600" },
+
   LOST:       { label: "Mất sách",    color: "bg-purple-50 text-purple-600" },
   DAMAGE:     { label: "Hư hỏng",     color: "bg-pink-50 text-pink-600" },
 };
@@ -43,24 +47,6 @@ function TypeBadge({ type }) {
     <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${m.color}`}>
       {m.label}
     </span>
-  );
-}
-
-
-function Toast({ message, type, onClose }) {
-  useEffect(() => {
-    const t = setTimeout(onClose, 3000);
-    return () => clearTimeout(t);
-  }, [onClose]);
-  const colors = { success: "bg-emerald-500", error: "bg-rose-500", info: "bg-blue-500" };
-  return (
-    <div className={`fixed top-5 right-5 z-[9999] flex items-center gap-3 px-5 py-3 rounded-xl text-white shadow-2xl text-sm font-medium ${colors[type] || colors.info}`}
-      style={{ animation: "slideIn 0.3s ease" }}>
-      {type === "success" && <CheckCircle size={18} />}
-      {type === "error"   && <AlertCircle  size={18} />}
-      {message}
-      <button onClick={onClose} className="ml-2 opacity-70 hover:opacity-100"><X size={14} /></button>
-    </div>
   );
 }
 
@@ -94,7 +80,6 @@ function DetailModal({ fine, onClose }) {
     ["Số tiền phạt",    <span key="a" className="font-semibold text-red-600">{fmt(fine.amount)}</span>],
     ["Lý do",           fine.reason || "—"],
     ["Ghi chú",         fine.notes || "—"],
-    ["Lý do miễn phí",  fine.waiverReason || "—"],
     ["Ngày thanh toán", fmtDate(fine.paidAt)],
     ["Ngày tạo",        fmtDate(fine.createdAt)],
   ];
@@ -123,19 +108,12 @@ function WaiveModal({ fine, onClose, onSuccess, showToast }) {
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState("");
 
-  const getToken = () => localStorage.getItem("token");
-  const auth     = () => ({ Authorization: `Bearer ${getToken()}` });
-
   const handleSubmit = async () => {
     if (!reason.trim()) { setError("Vui lòng nhập lý do miễn phí."); return; }
     setLoading(true);
     try {
-      const res = await axios.post(
-        `${BASE}/api/fines/${fine.id}/waive`,
-        { fineId: fine.id, waiverReason: reason.trim() },
-        { headers: auth() }
-      );
-      onSuccess(res.data);
+      const res = await fineService.waiveFine(fine.id, { fineId: fine.id, waiverReason: reason.trim() });
+      onSuccess(res.data || res);
       showToast("Miễn phí thành công!", "success");
       onClose();
     } catch (err) {
@@ -181,20 +159,13 @@ function PayModal({ fine, onClose, onSuccess, showToast }) {
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState("");
 
-  const getToken = () => localStorage.getItem("token");
-  const auth     = () => ({ Authorization: `Bearer ${getToken()}` });
-
   const handleSubmit = async () => {
     const parsed = Number(amount);
     if (!parsed || parsed <= 0) { setError("Số tiền không hợp lệ."); return; }
     setLoading(true);
     try {
-      const res = await axios.post(
-        `${BASE}/api/fines/${fine.id}/pay`,
-        { amount: parsed },
-        { headers: auth() }
-      );
-      onSuccess(res.data);
+      const res = await fineService.payFine(fine.id, { amount: parsed });
+      onSuccess(res.data || res);
       showToast("Thanh toán thành công!", "success");
       onClose();
     } catch (err) {
@@ -256,26 +227,22 @@ function Fines() {
   const [waivingFine,   setWaivingFine]   = useState(null);
   const [payingFine,    setPayingFine]    = useState(null);
   const [loadingDetail, setLoadingDetail] = useState(null);
+  const [confirm,       setConfirm]       = useState(null);
 
-  const getToken  = () => localStorage.getItem("token");
-  const auth      = () => ({ Authorization: `Bearer ${getToken()}` });
   const showToast = (message, type = "info") => setToast({ message, type });
 
-  // ── fetch ─────────────────────────────────────────────────────────────────
+ 
 
   const fetchFines = useCallback(async (p = 0) => {
     setLoading(true);
     setError("");
     try {
-      const params = { page: p, size: PAGE_SIZE };
-      if (filterStatus) params.status = filterStatus;
-      if (filterType)   params.type   = filterType;
-
-      const res  = await axios.get(`${BASE}/api/fines`, { params, headers: auth() });
-      const data = res.data.data || res.data;
+      const res  = await fineService.searchFines({ page: p, size: PAGE_SIZE, status: filterStatus, type: filterType });
+      const data = res.data || res;
 
       setFines(data.content || []);
       setTotalPages(data.totalPage || data.totalPages || 1);
+      
     } catch (err) {
       setError(err?.response?.data?.message || "Không thể tải dữ liệu.");
     } finally {
@@ -297,13 +264,14 @@ function Fines() {
     );
   });
 
+  
   // ── handlers ──────────────────────────────────────────────────────────────
 
   const handleViewDetail = async (id) => {
     setLoadingDetail(id);
     try {
-      const res = await axios.get(`${BASE}/api/fines/${id}`, { headers: auth() });
-      setDetailFine(res.data);
+      const res = await fineService.getFineById(id);
+      setDetailFine(res.data || res);
     } catch (err) {
       showToast(err?.response?.data?.message || "Không thể tải chi tiết.", "error");
     } finally {
@@ -313,6 +281,23 @@ function Fines() {
 
   const handleWaiveSuccess = (updated) => setFines((prev) => prev.map((f) => f.id === updated.id ? updated : f));
   const handlePaySuccess   = (updated) => setFines((prev) => prev.map((f) => f.id === updated.id ? updated : f));
+
+  const handleDeleteConfirm = async () => {
+    if (!confirm) return;
+    try {
+      await fineService.deleteFine(confirm.id);
+      showToast(`Đã xóa phiếu phạt #${confirm.id}`, "success");
+      setFines((prev) => prev.filter((f) => f.id !== confirm.id));
+    } catch (err) {
+      showToast(err?.response?.data?.message || "Không thể xóa phiếu phạt.", "error");
+    } finally {
+      setConfirm(null);
+    }
+  };
+
+  const handleDeleteFine = (fine) => {
+    setConfirm({ id: fine.id, name: fine.userName });
+  };
 
   const clearFilters = () => { setFilterStatus(""); setFilterType(""); setPage(0); };
   const hasFilters   = filterStatus || filterType;
@@ -333,6 +318,17 @@ function Fines() {
       `}</style>
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+
+      {confirm && (
+        <ConfirmDialog
+          title="Xác nhận xóa"
+          message={`Bạn có chắc muốn xóa phiếu phạt của "${confirm.name}"?`}
+          confirmLabel="Xóa"
+          confirmClass="bg-rose-500 hover:bg-rose-600"
+          onConfirm={handleDeleteConfirm}
+          onCancel={() => setConfirm(null)}
+        />
+      )}
 
       <div style={{ width: "100%", padding: "24px", boxSizing: "border-box" }}>
         <div className="flex items-start justify-between mb-6">
@@ -415,7 +411,7 @@ function Fines() {
                 >
                   <option value="">Tất cả</option>
                   <option value="OVERDUE">Quá hạn</option>
-                  <option value="PROCESSING">Xử lý chậm</option>
+                  
                   <option value="LOST">Mất sách</option>
                   <option value="DAMAGE">Hư hỏng</option>
                 </select>
@@ -436,9 +432,9 @@ function Fines() {
           <div className="overflow-x-auto">
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
-                <tr style={{ background: "#f9fafb", borderBottom: "1px solid #f3f4f6" }}>
+                <tr className="bg-gray-50 border-b border-gray-100">
                   {["ID", "Người dùng", "Tên sách", "Loại phạt", "Số tiền", "Trạng thái", "Ngày tạo", "Hành động"].map((h) => (
-                    <th key={h} style={{ padding: "14px 20px", textAlign: "left", fontSize: "11px", fontWeight: 700, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em", whiteSpace: "nowrap" }}>
+                    <th key={h} className="px-5 py-3.5 text-left text-sm font-semibold text-gray-900 uppercase tracking-wide whitespace-nowrap">
                       {h}
                     </th>
                   ))}
@@ -459,13 +455,13 @@ function Fines() {
                   <tr key={fine.id} style={{ borderBottom: "1px solid #f9fafb" }}
                     onMouseEnter={e => e.currentTarget.style.background = "rgba(239,246,255,0.4)"}
                     onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-                    <td style={{ padding: "16px 20px", color: "#9ca3af", fontFamily: "monospace", fontSize: 12 }}>{fine.id}</td>
-                    <td style={{ padding: "16px 20px", fontWeight: 600, fontSize: 15, color: "#1f2937" }}>{fine.userName || "—"}</td>
-                    <td style={{ padding: "16px 20px", color: "#6b7280", fontSize: 14, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={fine.bookTitle}>{fine.bookTitle || "—"}</td>
+                    <td style={{ padding: "16px 20px", color: "#000000", fontFamily: "monospace", fontSize: 14 }}>{fine.id}</td>
+                    <td style={{ padding: "16px 20px", fontWeight: 600, fontSize: 16, color: "#000000" }}>{fine.userName || "—"}</td>
+                    <td style={{ padding: "16px 20px", color: "#000000", fontSize: 16, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={fine.bookTitle}>{fine.bookTitle || "—"}</td>
                     <td style={{ padding: "16px 20px" }}><TypeBadge type={fine.fineType} /></td>
-                    <td style={{ padding: "16px 20px", fontWeight: 700, color: "#dc2626", whiteSpace: "nowrap" }}>{fmt(fine.amount)}</td>
+                    <td style={{ padding: "16px 20px", fontWeight: 700, color: "#000000", fontSize: 16, whiteSpace: "nowrap" }}>{fmt(fine.amount)}</td>
                     <td style={{ padding: "16px 20px" }}><StatusBadge status={fine.status} /></td>
-                    <td style={{ padding: "16px 20px", color: "#6b7280", fontSize: 13, whiteSpace: "nowrap" }}>{fmtDate(fine.createdAt)}</td>
+                    <td style={{ padding: "16px 20px", color: "#000000", fontSize: 14, whiteSpace: "nowrap" }}>{fmtDate(fine.createdAt)}</td>
                     <td style={{ padding: "16px 20px" }}>
                       <div style={{ display: "flex", gap: 8 }}>
                         <button
@@ -490,6 +486,13 @@ function Fines() {
                             <Ban size={15} />
                           </button>
                         )}
+
+                        <button
+                          onClick={() => handleDeleteFine(fine)}
+                          title="Xóa"
+                          className="p-2.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition">
+                          <Trash2 size={15} />
+                        </button>
                       </div>
                     </td>
                   </tr>

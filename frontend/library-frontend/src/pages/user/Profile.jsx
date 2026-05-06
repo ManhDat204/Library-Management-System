@@ -66,7 +66,6 @@ const AddressTab = ({ userId, onToast }) => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Xóa địa chỉ này?")) return;
     try {
       await api.delete(`/users/${userId}/addresses/${id}`);
       setAddresses(prev => prev.filter(a => a.id !== id));

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, Outlet, useNavigate, useLocation } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../../context/AuthContext";
+import ChatBox from "../../components/ChatBox";
 
 const navLinks = [
   { to: "/home",            label: "Trang chủ"  },
@@ -14,11 +15,8 @@ export default function Layout() {
   const { logout, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-
-  const [searchFocused, setSearchFocused] = useState(false);
-  const [searchValue, setSearchValue] = useState("");
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [showUserMenu, setShowUserMenu] = useState(false); // State cho Dropdown
+  const [showUserMenu, setShowUserMenu] = useState(false); 
 
   const handleLogout = () => {
     setShowLogoutConfirm(false);
@@ -28,10 +26,10 @@ export default function Layout() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#FDFCF0]"> {/* Màu nền kem nhẹ kiểu giấy sách */}
+    <div className="flex flex-col min-h-screen bg-white">
 
       {/* ══ HEADER ══ */}
-      <header className="sticky top-0 z-50 bg-[#FDFCF0]/90 backdrop-blur-md border-b border-black/5">
+      <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-black/5">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between gap-8">
 
           {/* Logo */}
@@ -44,22 +42,19 @@ export default function Layout() {
           </Link>
 
           {/* Search Bar - Tối giản hơn */}
-          <div className="flex-1 max-w-md">
-            <div className={`flex items-center gap-2 rounded-xl px-4 py-2 transition-all border ${
-              searchFocused ? "bg-white border-amber-500 shadow-sm" : "bg-black/5 border-transparent"
-            }`}>
-              <span className="text-gray-400 text-sm">⌕</span>
-              <input
-                type="text"
-                placeholder="Tìm tên sách, tác giả..."
-                value={searchValue}
-                onChange={e => setSearchValue(e.target.value)}
-                onFocus={() => setSearchFocused(true)}
-                onBlur={() => setSearchFocused(false)}
-                className="flex-1 bg-transparent outline-none text-sm text-gray-800 placeholder-gray-400"
-              />
-            </div>
-          </div>
+          <nav className="flex items-center gap-1">
+          {navLinks.map(({ to, label }) => {
+            const isActive = to === "/home" ? location.pathname === "/home" : location.pathname.startsWith(to);
+            return (
+              <Link key={to} to={to}
+                className={`px-4 h-10 flex items-center text-[12px] uppercase tracking-[0.08em] transition-all no-underline relative
+                  ${isActive ? "text-gray-900 font-bold" : "text-gray-400 hover:text-gray-600 font-medium"}`}>
+                {label}
+                {isActive && <span className="absolute bottom-0 left-4 right-4 h-0.5 bg-gray-900 rounded-t" />}
+              </Link>
+            );
+          })}
+        </nav>
 
           {/* Right Section — Chỉ giữ lại Ví và Avatar */}
           <div className="flex items-center gap-4">
@@ -147,46 +142,72 @@ export default function Layout() {
               </div>
               </>
             ) : (
-              <div className="flex gap-3">
+              <div className="flex items-center gap-3">
                 <Link to="/login" className="text-sm font-medium text-gray-600 hover:text-gray-900 no-underline">Đăng nhập</Link>
-                <Link to="/register" className="bg-gray-900 text-white px-4 py-1.5 rounded-full text-sm font-medium no-underline hover:bg-gray-800 transition-all">Đăng ký</Link>
+                <Link to="/register" className="  px-4 py-1.5 rounded-full text-sm font-medium hover:text-gray-900 no-underline  transition-all">Đăng ký</Link>
               </div>
             )}
           </div>
         </div>
       </header>
 
-      {/* ══ NAVIGATION ══ */}
-      <nav className="bg-[#1A1C1E] shadow-inner"> {/* Màu xám than đậm (dark charcoal) cực sang */}
-        <div className="max-w-7xl mx-auto px-6 flex items-center justify-start">
-          {navLinks.map(({ to, label }) => {
-            const isActive = to === "/home" ? location.pathname === "/home" : location.pathname.startsWith(to);
-            return (
-              <Link key={to} to={to}
-                className={`px-6 h-11 flex items-center text-[11px] font-bold uppercase tracking-[0.1em] transition-all no-underline relative
-                  ${isActive ? "text-amber-400" : "text-gray-400 hover:text-gray-200"}`}>
-                {label}
-                {isActive && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.4)]" />}
-              </Link>
-            );
-          })}
-        </div>
-      </nav>
 
-      {/* ══ MAIN CONTENT ══ */}
+
+
       <main className="flex-1 w-full max-w-7xl mx-auto px-6 py-8">
         <Outlet />
       </main>
+      <footer className="bg-[#1A1C1E] border-t border-white/5">
+        <div className="h-px bg-gradient-to-r from-transparent via-amber-500/40 to-transparent" />
 
-      {/* ══ FOOTER ══ */}
-      <footer className="bg-[#1A1C1E] py-10 border-t border-white/5">
-        <div className="max-w-7xl mx-auto px-6 text-center">
-          <p className="text-[11px] uppercase tracking-widest text-gray-500 mb-2">SáchHay Digital Library</p>
-          <p className="text-xs text-gray-600">© 2026. Kiến tạo tri thức từ những trang sách.</p>
+        <div className="max-w-7xl mx-auto px-6 py-10">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-10">
+
+            {/* Brand */}
+            <div className="col-span-2 md:col-span-1">
+              <span className="text-white font-bold text-xl tracking-tight">
+                Sách<em className="text-amber-500 not-italic">Hay</em>
+              </span>
+              <p className="text-gray-500 text-xs leading-relaxed mt-3">
+                Nền tảng thư viện số — kết nối tri thức, kiến tạo tương lai từ những trang sách.
+              </p>
+            </div>
+
+            {/* Khám phá */}
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-amber-500/70 font-semibold mb-4">Khám phá</p>
+              <ul className="space-y-2">
+                {["Sách mới nhất", "Sách hot", "Thể loại", "Tác giả"].map(item => (
+                  <li key={item} className="text-gray-500 text-xs hover:text-amber-400 transition-colors cursor-pointer">{item}</li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Tài khoản */}
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-amber-500/70 font-semibold mb-4">Tài khoản</p>
+              <ul className="space-y-2">
+                {["Đơn mượn", "Wishlist", "Ví của tôi", "Hồ sơ"].map(item => (
+                  <li key={item} className="text-gray-500 text-xs hover:text-amber-400 transition-colors cursor-pointer">{item}</li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Hỗ trợ */}
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-amber-500/70 font-semibold mb-4">Hỗ trợ</p>
+              <ul className="space-y-2">
+                {["Hướng dẫn mượn sách", "Chính sách phạt", "Liên hệ", "FAQ"].map(item => (
+                  <li key={item} className="text-gray-500 text-xs hover:text-amber-400 transition-colors cursor-pointer">{item}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          
         </div>
       </footer>
 
-      {/* ══ LOGOUT MODAL (Giữ nguyên logic cũ nhưng đổi style màu trắng/đen) ══ */}
       {showLogoutConfirm && (
         <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center" onClick={() => setShowLogoutConfirm(false)}>
           <div className="bg-white rounded-2xl p-8 w-80 text-center shadow-2xl" onClick={e => e.stopPropagation()}>
@@ -199,6 +220,7 @@ export default function Layout() {
           </div>
         </div>
       )}
+      {user && <ChatBox />}
     </div>
   );
 }

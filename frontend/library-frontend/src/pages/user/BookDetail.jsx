@@ -113,7 +113,7 @@ const HeartButton = ({ isInWishlist, busy, onToggle }) => (
   </button>
 );
 
-// ─── RATING OVERLAY (top-right of cover) ─────────────────────
+
 const RatingOverlay = ({ rating }) => {
   if (!rating || rating.totalReviews === 0) return null;
   return (
@@ -372,9 +372,9 @@ const RelatedBooks = ({ genreId, currentBookId }) => {
   useEffect(() => {
     if (!genreId) return;
     api
-      .get("/books", { params: { genreId, activeOnly: true, page: 0, size: 6 } })
+      .get("/books", { params: { genreId, activeOnly: true, page: 0, size: 20 } })
       .then((res) =>
-        setBooks((res.data.content || []).filter((b) => b.id !== currentBookId).slice(0, 5))
+        setBooks((res.data.content || []).filter((b) => b.id !== currentBookId))
       )
       .catch(() => {});
   }, [genreId, currentBookId]);
@@ -788,31 +788,6 @@ export default function BookDetailPage() {
               <RatingOverlay rating={rating} />
             </div>
 
-            {/* Availability */}
-            <div className="bg-white rounded-2xl p-4 border border-gray-100 mb-4">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-xs text-gray-400 font-medium">Trạng thái</span>
-                <span className={`text-xs font-bold ${availTextClass}`}>
-                  {avail === 0 ? "Hết sách" : `Còn ${avail}/${total} cuốn`}
-                </span>
-              </div>
-              <div className="h-1 bg-gray-100 rounded-full overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all duration-500"
-                  style={{ width: `${ratio * 100}%`, background: availBarColor }}
-                />
-              </div>
-              {book.alreadyHaveLoan && (
-                <div className="mt-2 text-xs text-blue-500 bg-blue-50 rounded-lg py-1 px-2 text-center">
-                  Bạn đang mượn sách này
-                </div>
-              )}
-              {book.alreadyHaveReservation && (
-                <div className="mt-1 text-xs text-yellow-600 bg-yellow-50 rounded-lg py-1 px-2 text-center">
-                  Bạn đang đặt trước sách này
-                </div>
-              )}
-            </div>
 
             {/* Nút Mượn ngay → chuyển sang trang checkout */}
             <button
@@ -833,81 +808,66 @@ export default function BookDetailPage() {
 
             {/* Title row */}
             <div className="flex items-start justify-between gap-3 mb-2">
-              <h1
-                className="text-3xl font-extrabold text-gray-900 m-0 leading-tight"
-                style={{ fontFamily: "'Playfair Display',Georgia,serif" }}
-              >
-                {book.title}
-              </h1>
-
-              {avail === 0 && !book.alreadyHaveReservation && (
-                <button
-                  onClick={handleReserve}
-                  disabled={reserveBusy}
-                  className={`flex-shrink-0 mt-1 flex items-center gap-1 whitespace-nowrap border-0 rounded-xl px-4 py-2 text-sm font-bold transition-all ${
-                    reserveBusy
-                      ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                      : "bg-gray-900 text-amber-50 cursor-pointer hover:bg-black shadow-md"
-                  }`}
-                >
-                  {reserveBusy ? (
-                    <>
-                      <span className="w-3 h-3 border-2 border-gray-300 border-t-gray-400 rounded-full animate-spin" />
-                      Đang xử lý...
-                    </>
-                  ) : "⏳ Đặt trước"}
-                </button>
-              )}
-
-              {avail === 0 && book.alreadyHaveReservation && (
-                <span className="flex-shrink-0 mt-1 text-xs text-yellow-600 bg-yellow-50 border border-yellow-200 rounded-xl px-3 py-1 font-semibold whitespace-nowrap">
-                  ⏳ Đã đặt trước
-                </span>
-              )}
             </div>
 
-            {/* Author */}
-            <p className="text-base text-gray-400 mb-4">
-              {book.author}
-              {book.publisher && <span className="text-gray-300"> · {book.publisher}</span>}
-            </p>
+            
 
-            {/* Price */}
-            <div className="mb-6">
-              <span
-                className="text-3xl font-extrabold text-amber-600"
-                style={{ fontFamily: "'Playfair Display',serif" }}
-              >
-                {book.price != null
-                  ? Number(book.price).toLocaleString("vi-VN") +""
-                  : "Miễn phí"}
-              </span>
-            </div>
+            
 
             {/* Tabs */}
-            <div className="border-b border-gray-100 mb-6 flex">
-              {TABS.map((tab) => (
-                <button
-                  key={tab.key}
-                  onClick={() => handleTabChange(tab.key)}
-                  className={`px-4 py-2 text-sm font-semibold border-0 bg-transparent cursor-pointer transition-all border-b-2 -mb-px ${
-                    activeTab === tab.key
-                      ? "text-gray-900 border-gray-900"
-                      : "text-gray-400 border-transparent hover:text-gray-600"
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
+            <div className="border-b border-gray-100 mb-6 flex justify-between items-center">
+              <div className="flex">
+                {TABS.map((tab) => (
+                  <button
+                    key={tab.key}
+                    onClick={() => handleTabChange(tab.key)}
+                    className={`px-4 py-2 text-sm font-semibold border-0 bg-transparent cursor-pointer transition-all border-b-2 -mb-px ${
+                      activeTab === tab.key
+                        ? "text-gray-900 border-gray-900"
+                        : "text-gray-400 border-transparent hover:text-gray-600"
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+              
+              {/* Reserve button on the right */}
+              {avail === 0 && (
+                <div className="flex-shrink-0 pb-2">
+                  {!book.alreadyHaveReservation && (
+                    <button
+                      onClick={handleReserve}
+                      disabled={reserveBusy}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold border border-gray-200 transition-all ${
+                        reserveBusy
+                          ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                          : "bg-white text-gray-600 cursor-pointer hover:bg-gray-50"
+                      }`}
+                    >
+                      {reserveBusy && <span className="w-2.5 h-2.5 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />}
+                      Đặt trước
+                    </button>
+                  )}
+
+                  {book.alreadyHaveReservation && (
+                    <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg">
+                      <span className="text-xs text-gray-600 font-semibold">Đã đặt trước</span>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {activeTab === "info" && (
               <div>
+                <InfoRow label="Tên sách"         value={book.title} />
                 <InfoRow label="ISBN"            value={book.isbn} />
                 <InfoRow label="Thể loại"        value={book.genreName} />
                 <InfoRow label="Tác giả"         value={book.authorName} />
                 <InfoRow label="Nhà xuất bản"    value={book.publisherName} />
                 <InfoRow label="Ngôn ngữ"        value={book.language} />
+                <InfoRow label="Giá"            value={book.price != null ? Number(book.price).toLocaleString("vi-VN") + "₫" : "Miễn phí"} />
                 <InfoRow label="Số trang"        value={book.pages ? `${book.pages} trang` : null} />
                 <InfoRow label="Ngày xuất bản"   value={book.publicationDate} />
                 <InfoRow label="Tổng số bản"     value={book.totalCopies != null ? `${book.totalCopies} cuốn` : null} />

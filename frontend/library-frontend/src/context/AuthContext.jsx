@@ -2,8 +2,10 @@ import { createContext, useContext, useState, useEffect } from "react";
 
 const AuthContext = createContext();
 
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true); 
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -16,6 +18,7 @@ export const AuthProvider = ({ children }) => {
     if (token && role) {
       setUser({ token, role, username, profileImage, fullName, userId });
     }
+     setLoading(false); 
   }, []);
 
   const login = (token, role, username, profileImage, fullName, userId) => {
@@ -28,11 +31,9 @@ export const AuthProvider = ({ children }) => {
     setUser({ token, role, username, profileImage, fullName,userId });
   };
 
-  // --- HÀM QUAN TRỌNG NHẤT ĐỂ CẬP NHẬT ẢNH ---
   const updateUser = (newData) => {
     setUser((prev) => {
       const updated = { ...prev, ...newData };
-      // Cập nhật lại localStorage để khi F5 không bị mất ảnh
       if (newData.profileImage !== undefined) localStorage.setItem("profileImage", newData.profileImage);
       if (newData.fullName !== undefined) localStorage.setItem("fullName", newData.fullName);
       return updated;
@@ -40,12 +41,12 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
-    localStorage.clear(); // Xóa hết cho sạch
+    localStorage.clear(); 
     setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, updateUser }}>
+    <AuthContext.Provider value={{ user, login, logout, updateUser, loading }}>
       {children}
     </AuthContext.Provider>
   );

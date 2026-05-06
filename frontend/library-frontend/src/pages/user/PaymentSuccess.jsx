@@ -36,11 +36,11 @@ const TYPE_CONFIG = {
   },
   FINE: {
     successTitle:  "Thanh toán phạt thành công!",
-    successMsg:    "Khoản phạt đã được thanh toán. Cảm ơn bạn!",
+    successMsg:    "Khoản phạt đã được thanh toán.",
     successIcon:   "✅",
-    primaryLabel:  "Xem lịch sử phạt →",
-    primaryPath:   "/home/fines",
-    failedRetryPath: "/home/fines",
+    primaryLabel:  "Xem đơn mượn",
+    primaryPath:   "/home/my-loans",
+    failedRetryPath: "/home/my-loans",
   },
 };
 

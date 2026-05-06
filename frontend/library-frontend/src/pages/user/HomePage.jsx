@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import PageHeader from "../../components/PageHeader";
 
 const api = axios.create({ baseURL: "http://localhost:8080/api" });
 api.interceptors.request.use((config) => {
@@ -14,23 +15,38 @@ const COVER_COLORS = [
   "#2e1a2e","#2e2200","#1e2e20","#2e1e1e",
 ];
 
-// ─── BOOK COVER ───────────────────────────────────────────────
+
 const BookCover = ({ book }) => {
   const color = COVER_COLORS[book.id % COVER_COLORS.length];
   const initials = book.title.split(" ").slice(0, 2).map(w => w[0]).join("");
-  if (book.coverImageUrl) {
-    return <img src={book.coverImageUrl} alt={book.title} className="w-full h-full object-cover" onError={e => { e.target.style.display = "none"; }} />;
-  }
+
   return (
-    <div className="w-full h-full flex flex-col items-center justify-center relative overflow-hidden"
-      style={{ background: `linear-gradient(135deg, ${color} 0%, ${color}dd 60%, #000 100%)` }}>
-      <span className="text-5xl font-black text-white/10 tracking-tight">{initials}</span>
-      <span className="absolute bottom-3 left-3 right-3 text-center text-white/30 text-xs uppercase tracking-widest truncate">{book.genreName || "—"}</span>
+    <div className="w-full h-full relative group overflow-hidden bg-gray-100">
+      {book.coverImageUrl ? (
+        <img 
+          src={book.coverImageUrl} 
+          alt={book.title} 
+          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" 
+        />
+      ) : (
+        <div 
+          className="w-full h-full flex flex-col items-center justify-center p-4 text-center transition-transform duration-500 group-hover:scale-110"
+          style={{ background: `linear-gradient(135deg, ${color}ee 0%, ${color} 100%)` }}
+        >
+          <div className="w-16 h-16 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center mb-3 border border-white/20">
+            <span className="text-2xl font-bold text-white/90 uppercase">{initials}</span>
+          </div>
+          <p className="text-[10px] text-white/60 font-medium px-2 line-clamp-3 leading-relaxed uppercase tracking-wider">
+            {book.title}
+          </p>
+        </div>
+      )}
+      <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
     </div>
   );
 };
 
-// ─── AVAIL BADGE ──────────────────────────────────────────────
+
 const AvailBadge = ({ available, total }) => {
   const ratio = total > 0 ? available / total : 0;
   const cls = ratio === 0 ? "bg-red-100 text-red-500" : ratio < 0.3 ? "bg-yellow-100 text-yellow-600" : "bg-green-100 text-green-600";
@@ -41,7 +57,7 @@ const AvailBadge = ({ available, total }) => {
   );
 };
 
-// ─── SKELETON ─────────────────────────────────────────────────
+
 const SkeletonCard = () => (
   <div className="bg-white rounded-2xl overflow-hidden border border-black/5 animate-pulse">
     <div className="h-52 bg-gray-200" />
@@ -57,7 +73,7 @@ const SkeletonCard = () => (
   </div>
 );
 
-// ─── WISHLIST BTN ─────────────────────────────────────────────
+
 const WishlistBtn = ({ bookId, isInWishlist, onToggle }) => {
   const [busy, setBusy] = useState(false);
   const handleClick = async (e) => {
@@ -78,7 +94,7 @@ const WishlistBtn = ({ bookId, isInWishlist, onToggle }) => {
   );
 };
 
-// ─── PAGINATION ───────────────────────────────────────────────
+
 const Pagination = ({ page, totalPage, onChange }) => {
   if (totalPage <= 1) return null;
   const pages = [];
@@ -109,7 +125,7 @@ const Pagination = ({ page, totalPage, onChange }) => {
   );
 };
 
-// ─── TOAST ────────────────────────────────────────────────────
+
 const Toast = ({ message, type, onDone }) => {
   useEffect(() => { const t = setTimeout(onDone, 2500); return () => clearTimeout(t); }, []);
   return (
@@ -122,7 +138,7 @@ const Toast = ({ message, type, onDone }) => {
   );
 };
 
-// ─── MAIN ─────────────────────────────────────────────────────
+
 export default function HomePage() {
   const navigate = useNavigate();
 
@@ -140,11 +156,14 @@ export default function HomePage() {
   const [visible, setVisible] = useState(false);
   const [toast, setToast]     = useState(null);
   const [wishlistIds, setWishlistIds] = useState(new Set());
+  const [hotBooks, setHotBooks] = useState([]);
+  const [hotLoading, setHotLoading] = useState(true);
 
   useEffect(() => {
     setTimeout(() => setVisible(true), 80);
     fetchGenres();
     fetchWishlistIds();
+    fetchHotBooks();
   }, []);
 
   const fetchWishlistIds = async () => {
@@ -153,6 +172,20 @@ export default function HomePage() {
       setWishlistIds(new Set((res.data.content || []).map(i => i.book?.id).filter(Boolean)));
     } catch {}
   };
+
+  const fetchHotBooks = async () => {
+  try {
+    setHotLoading(true);
+    const res = await api.get("/books/top-borrowed", {
+      params: { limit: 10 },
+    });
+    setHotBooks(res.data || []);
+  } catch {
+    setHotBooks([]);
+  } finally {
+    setHotLoading(false);
+  }
+};
 
   const toggleWishlist = async (bookId) => {
     const isIn = wishlistIds.has(bookId);
@@ -185,7 +218,7 @@ export default function HomePage() {
     try {
       setLoading(true); setError(null);
       const res = await api.get("/books", {
-        params: { genreId: activeGenreId || undefined, activeOnly: true, page: p, size: 8, sortBy, sortDirection: "DESC" },
+        params: { genreId: activeGenreId || undefined, activeOnly: true, page: p, size: 10, sortBy, sortDirection: "DESC" },
       });
       setBooks(res.data.content || []);
       setTotalPage(res.data.totalPage || 0);
@@ -198,62 +231,100 @@ export default function HomePage() {
 
   useEffect(() => { fetchBooks(page); }, [page, activeGenreId, sortBy]);
 
-  const handleGenreClick = (genre) => {
-    if (activeGenreId === genre.id) { setActiveGenreId(null); setActiveGenreName(null); }
-    else { setActiveGenreId(genre.id); setActiveGenreName(genre.name); }
-    setPage(0);
-  };
+  
 
-  const GENRE_ICONS = ["⚡","✦","◈","◎","◆","✴","◉","✿","❋","◐","⊕","✧"];
 
   return (
-    <div className={`min-h-screen bg-amber-50/50 transition-opacity duration-500 ${visible ? "opacity-100" : "opacity-0"}`}>
+    <div className={`min-h-screen bg-white transition-opacity duration-500 ${visible ? "opacity-100" : "opacity-0"}`}>
       <style>{`
         @keyframes slideInToast { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
       `}</style>
-
-
- 
+      
 
       <div className="px-4 md:px-6">
+        {(hotLoading || hotBooks.length > 0) && (
+          <section className="mb-10">
+            <div className="flex items-baseline justify-between mb-5">
+              <div className="flex items-center gap-2">
+                <span className="text-lg">🔥</span>
+                <h2 className="text-lg font-bold text-gray-900">Sách hot</h2>
+              </div>
+              <button onClick={() => navigate("/home/books")}
+                className="text-xs text-amber-600 font-medium uppercase tracking-wider hover:text-amber-500 transition-colors">
+                Xem tất cả →
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+              {hotLoading
+                ? Array(5).fill(0).map((_, i) => <SkeletonCard key={i} />)
+                : hotBooks.map((book) => (
+                    <div key={book.id}
+                      className="bg-white rounded-2xl overflow-hidden border border-black/5 cursor-pointer group transition-all duration-300 hover:-translate-y-1.5 hover:shadow-xl hover:shadow-black/10 flex flex-col"
+                      onClick={() => navigate(`/home/books/${book.id}`)}>
+                      <div className="h-72 relative overflow-hidden">
+                        <BookCover book={book} />
+
+                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-20">
+                          <button onClick={e => { e.stopPropagation(); navigate(`/home/books/${book.id}`); }}
+                            className="bg-white text-gray-900 text-xs font-semibold px-4 py-2 rounded-full hover:bg-amber-500 hover:text-white transition-colors">
+                            Chi tiết
+                          </button>
+                          <WishlistBtn bookId={book.id} isInWishlist={wishlistIds.has(book.id)} onToggle={toggleWishlist} />
+                        </div>
+                      </div>
+
+                      <div className="p-4 flex flex-col flex-1">
+                        <div className="text-xs font-semibold text-amber-600 uppercase tracking-wider mb-1 truncate">
+                          {book.genreName || "—"}
+                        </div>
+                        <div className="font-bold text-gray-900 text-sm leading-snug mb-1 line-clamp-2">
+                          {book.title}
+                        </div>
+                        <div className="text-xs text-gray-400 mb-3 truncate">{book.authorName || book.author}</div>
+                        <div className="flex items-center justify-between gap-2 mt-auto pt-2">
+                          <span className="font-bold text-gray-900 text-sm">
+                            {book.price != null ? Number(book.price).toLocaleString("vi-VN") + "₫" : "Miễn phí"}
+                          </span>
+                          <button
+                            disabled={book.availableCopies === 0}
+                            onClick={e => { e.stopPropagation(); navigate(`/home/books/${book.id}`); }}
+                            className="text-xs font-semibold px-3 py-1.5 rounded-full transition-all disabled:bg-gray-100 disabled:text-gray-300 disabled:cursor-not-allowed bg-gray-900 text-amber-50 hover:bg-amber-500 whitespace-nowrap">
+                            {book.availableCopies === 0 ? "Hết sách" : "Mượn ngay"}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+              }
+            </div>
+          </section>
+        )}
+
+        {/* SECTION: GỢI Ý SÁCH DỰA TRÊN LỊCH SỬ MƯỢN */}
+
+        {/* SECTION: SÁCH MỚI NHẤT (GIỮ NGUYÊN NHƯ CŨ) */}
         <section id="books-section" className="mb-12">
           <div className="flex items-baseline justify-between mb-5">
-            <h2 className="text-2xl font-bold text-gray-900 tracking-tight">
-              {activeGenreName ? `Sách ${activeGenreName}` : "Sách nổi bật"}
-            </h2>
+            <PageHeader title={activeGenreName ? `Sách ${activeGenreName}` : "Sách mới nhất"} />
             <button onClick={() => navigate("/home/books")}
               className="text-xs text-amber-600 font-medium uppercase tracking-wider hover:text-amber-500 transition-colors flex items-center gap-1">
               Xem tất cả →
             </button>
           </div>
 
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
             {loading ? (
-              Array(8).fill(0).map((_, i) => <SkeletonCard key={i} />)
-            ) : error ? (
-              <div className="col-span-full bg-red-50 border border-red-200 rounded-2xl p-8 text-center">
-                <p className="text-red-500 text-sm mb-3">⚠ {error}</p>
-                <button onClick={() => fetchBooks(0)} className="bg-gray-900 text-amber-50 text-sm px-5 py-2 rounded-full">Thử lại</button>
-              </div>
-            ) : books.length === 0 ? (
-              <div className="col-span-full text-center py-16">
-                <div className="text-4xl mb-3 opacity-20">◈</div>
-                <p className="text-gray-400 text-sm italic">Không tìm thấy sách nào</p>
-              </div>
+              Array(10).fill(0).map((_, i) => <SkeletonCard key={i} />)
             ) : books.map((book, i) => (
               <div key={book.id}
-                className="bg-white rounded-2xl overflow-hidden border border-black/5 cursor-pointer group transition-all duration-300 hover:-translate-y-1.5 hover:shadow-xl hover:shadow-black/10"
+                className="bg-white rounded-2xl overflow-hidden border border-black/5 cursor-pointer group transition-all duration-300 hover:-translate-y-1.5 hover:shadow-xl hover:shadow-black/10 flex flex-col"
                 style={{ animationDelay: `${i * 0.06}s` }}
                 onClick={() => navigate(`/home/books/${book.id}`)}>
 
-                <div className="h-52 relative overflow-hidden">
+                <div className="h-72 relative overflow-hidden">
                   <BookCover book={book} />
-       
-                  <div className="absolute top-2 left-2 z-10">
-                    <AvailBadge available={book.availableCopies} total={book.totalCopies} />
-                  </div>
-
+                 
                   <div className="absolute inset-0 bg-black/50 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-20">
                     <button onClick={e => { e.stopPropagation(); navigate(`/home/books/${book.id}`); }}
                       className="bg-white text-gray-900 text-xs font-semibold px-4 py-2 rounded-full hover:bg-amber-500 hover:text-white transition-colors">
@@ -263,8 +334,7 @@ export default function HomePage() {
                   </div>
                 </div>
 
-
-                <div className="p-4">
+                <div className="p-4 flex flex-col flex-1">
                   <div className="text-xs font-semibold text-amber-600 uppercase tracking-wider mb-1 truncate">
                     {book.genreName || "—"}
                   </div>
@@ -272,7 +342,7 @@ export default function HomePage() {
                     {book.title}
                   </div>
                   <div className="text-xs text-gray-400 mb-3 truncate">{book.authorName || book.author}</div>
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center justify-between gap-2 mt-auto pt-2">
                     <span className="font-bold text-gray-900 text-sm">
                       {book.price != null ? Number(book.price).toLocaleString("vi-VN") + "₫" : "Miễn phí"}
                     </span>
@@ -287,26 +357,7 @@ export default function HomePage() {
               </div>
             ))}
           </div>
-
-          
         </section>
-
-
-        <div className="bg-gray-900 rounded-3xl p-10 flex flex-col md:flex-row items-center justify-between gap-6 mb-8 relative overflow-hidden">
-          <div className="absolute text-white/[0.03] text-9xl font-serif right-8 -top-2 select-none pointer-events-none">❝</div>
-          <div className="relative z-10">
-            <div className="text-amber-50 text-2xl font-bold mb-1">Đăng ký nhận ưu đãi độc quyền</div>
-            <p className="text-amber-50/40 text-sm">Nhận thông báo sách mới và ưu đãi mỗi tuần</p>
-          </div>
-          <div className="flex gap-3 relative z-10">
-            <input placeholder="Email của bạn..."
-              className="bg-white/10 border border-white/15 rounded-full px-5 py-2.5 text-amber-50 text-sm outline-none focus:border-amber-400 placeholder-white/30 w-56" />
-            <button className="bg-amber-500 hover:bg-amber-400 text-white text-sm font-medium px-5 py-2.5 rounded-full transition-all">
-              Đăng ký
-            </button>
-          </div>
-        </div>
-
       </div>
 
       {toast && <Toast message={toast.message} type={toast.type} onDone={() => setToast(null)} />}

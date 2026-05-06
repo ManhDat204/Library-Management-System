@@ -28,6 +28,7 @@ export default function CheckoutPage() {
   const navigate = useNavigate();
 
   const [book, setBook]                     = useState(null);
+  const [user, setUser]                     = useState(null);
   const [defaultAddress, setDefaultAddress] = useState(null);
   const [checkoutDays, setCheckoutDays]     = useState(7);
   const [notes, setNotes]                   = useState("");
@@ -36,6 +37,7 @@ export default function CheckoutPage() {
   const [error, setError]                   = useState(null);
   const [submitError, setSubmitError]       = useState(null);
   const [visible, setVisible]               = useState(false);
+  
 
   useEffect(() => { setTimeout(() => setVisible(true), 60); loadAll(); }, [id]);
 
@@ -44,9 +46,10 @@ export default function CheckoutPage() {
       setLoading(true); setError(null);
       const [bookRes, profileRes] = await Promise.all([
         api.get(`/books/${id}`),
-        api.get("/users/profile"),          // backend tự đọc token
+        api.get("/users/profile"),      
       ]);
       setBook(bookRes.data);
+      setUser(profileRes.data);
       const userId = profileRes.data?.id;
 
       if (userId) {
@@ -68,6 +71,14 @@ export default function CheckoutPage() {
   const handleSubmit = async () => {
     try {
       setSubmitting(true); setSubmitError(null);
+      
+
+      if (!defaultAddress) {
+        setSubmitError("Vui lòng thêm địa chỉ nhận đơn");
+        setSubmitting(false);
+        return;
+      }
+      
       await api.post("/book-loans/checkout", {
         bookId: Number(id), checkoutDays,
         addressId: defaultAddress?.id || undefined,
@@ -116,54 +127,69 @@ export default function CheckoutPage() {
             </div>
             <div className="flex gap-5 px-6 py-5 border-b border-gray-50">
               <div className="flex-shrink-0 w-20 rounded-2xl overflow-hidden shadow-md" style={{ aspectRatio:"3/4" }}><BookCover book={book} /></div>
-              <div className="flex-1 min-w-0 py-1">
-                <p className="text-xs font-bold text-amber-600 uppercase tracking-wider mb-1">{book.genreName}</p>
-                <h3 className="text-base font-bold text-gray-900 line-clamp-2" style={{ fontFamily:"'Playfair Display',serif" }}>{book.title}</h3>
-                <p className="text-sm text-gray-400 mt-1 italic">bởi {book.authorName || book.author}</p>
-              </div>
             </div>
+            
             <div className="px-6 divide-y divide-gray-50">
-              <div className="flex justify-between py-3.5"><span className="text-sm text-gray-400">Ngày mượn</span><span className="text-sm font-semibold text-gray-800">{fmt(today)}</span></div>
-              <div className="flex justify-between py-3.5"><span className="text-sm text-gray-400">Hạn trả</span><span className="text-sm font-bold text-amber-600">{fmt(dueDate)}</span></div>
-              <div className="flex justify-between py-3.5"><span className="text-sm text-gray-400">Thời hạn</span><span className="text-sm font-bold text-gray-800">{checkoutDays} ngày</span></div>
-            </div>
-          </div>
-
-          {/* Địa chỉ mặc định — chỉ hiển thị, không có nút thay đổi */}
-          <div className="bg-white rounded-3xl border border-gray-100 shadow-sm px-6 py-5">
-            <div className="flex items-start gap-3">
-              <span className="text-lg mt-0.5">📍</span>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Địa chỉ nhận sách</p>
-                {defaultAddress ? (
-                  <>
-                    <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold text-gray-900">{defaultAddress.fullName}</span>
-                        <span className="text-gray-300 text-xs">·</span>
-                        <span className="text-sm text-gray-500">{defaultAddress.phone}</span>
-                    </div>
-                    <span className="text-xs font-bold text-amber-600 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-full flex-shrink-0">
-                        Mặc định
-                    </span>
-                    </div>
-                    <p className="text-xs text-gray-400 mt-1 leading-relaxed">{addrText}</p>
-                  </>
-                ) : (
+              {/* Tên sách */}
+              <div className="flex justify-between py-3.5"><span className="text-sm font-bold text-gray-900">Tên sách</span><span className="text-sm font-semibold text-gray-800">{book.title || "—"}</span></div>
+              
+              {/* Người mượn */}
+              {user && (
+                <div className="flex justify-between py-3.5">
+                  <span className="text-sm font-bold text-gray-900">Người mượn</span>
+                  <span className="text-sm font-semibold text-gray-800">{user.fullName || user.name || "—"}</span>
+                </div>
+              )}
+              
+              {/* Ngày mượn */}
+              <div className="flex justify-between py-3.5"><span className="text-sm font-bold text-gray-900">Ngày mượn</span><span className="text-sm font-semibold text-gray-800">{fmt(today)}</span></div>
+              
+              {/* Hạn trả */}
+              <div className="flex justify-between py-3.5"><span className="text-sm font-bold text-gray-900">Hạn trả</span><span className="text-sm font-bold text-gray-900">{fmt(dueDate)}</span></div>
+              
+              {/* Số trang */}
+              <div className="flex justify-between py-3.5"><span className="text-sm font-bold text-gray-900">Số trang</span><span className="text-sm font-semibold text-gray-800">{book.pages ? `${book.pages} trang` : "—"}</span></div>
+              
+              {/* Thể loại */}
+              <div className="flex justify-between py-3.5"><span className="text-sm font-bold text-gray-900">Thể loại</span><span className="text-sm font-semibold text-gray-800">{book.genreName || "—"}</span></div>
+              
+              {/* Ngôn ngữ */}
+              <div className="flex justify-between py-3.5"><span className="text-sm font-bold text-gray-900">Ngôn ngữ</span><span className="text-sm font-semibold text-gray-800">{book.language || "—"}</span></div>
+              
+              {/* Nhà xuất bản */}
+              <div className="flex justify-between py-3.5"><span className="text-sm font-bold text-gray-900">Nhà xuất bản</span><span className="text-sm font-semibold text-gray-800">{book.publisherName || "—"}</span></div>
+              
+              {/* Giá thuê */}
+              <div className="flex justify-between py-3.5"><span className="text-sm font-bold text-gray-900">Giá thuê</span><span className="text-sm font-bold text-gray-900">{book.price != null ? Number(book.price).toLocaleString("vi-VN") + "₫" : "Miễn phí"}</span></div>
+              
+              {/* Địa chỉ nhận sách */}
+              {defaultAddress && (
+                <div className="flex justify-between py-3.5">
+                  <span className="text-sm font-bold text-gray-900">Địa chỉ nhận sách</span>
+                  <div className="text-right">
+                    <p className="text-sm font-bold text-gray-900">{defaultAddress.fullName} {defaultAddress.phone}</p>
+                    <p className="text-sm font-bold text-gray-900">{addrText}</p>
+                  </div>
+                </div>
+              )}
+              
+              {!defaultAddress && (
+                <div className="py-3.5">
+                  <p className="text-sm font-bold text-gray-900 mb-2">Địa chỉ nhận sách</p>
                   <p className="text-sm text-gray-400 italic">
-                    Chưa có địa chỉ mặc định —{" "}
+                    Chưa có địa chỉ {" "}
                     <span className="text-blue-500 cursor-pointer underline" onClick={() => navigate("/home/profile")}>Thêm địa chỉ</span>
                   </p>
-                )}
+                </div>
+              )}
+              
+              {/* Ghi chú */}
+              <div className="pt-3.5">
+                <p className="text-sm font-bold text-gray-900 mb-2">Ghi chú <span className="font-normal text-gray-500 text-xs"></span></p>
+                <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Ví dụ: Giao vào buổi sáng, để tại lễ tân..." rows={2}
+                  className="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm text-gray-700 resize-none outline-none focus:border-gray-400 transition-colors placeholder-gray-300" />
               </div>
             </div>
-          </div>
-
-          {/* Ghi chú */}
-          <div className="bg-white rounded-3xl border border-gray-100 shadow-sm px-6 py-5">
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Ghi chú <span className="font-normal normal-case text-gray-300">(tuỳ chọn)</span></p>
-            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Ví dụ: Giao vào buổi sáng, để tại lễ tân..." rows={2}
-              className="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm text-gray-700 resize-none outline-none focus:border-gray-400 transition-colors placeholder-gray-300" />
           </div>
 
           {submitError && <div className="bg-red-50 border border-red-200 rounded-2xl px-5 py-3 text-sm text-red-500 flex items-center gap-2"><span>⚠</span> {submitError}</div>}
@@ -171,11 +197,11 @@ export default function CheckoutPage() {
           {/* 2 nút bằng nhau — đều flex-1 */}
           <div className="flex gap-3 pt-1 pb-8">
             <button onClick={() => navigate(-1)} className="flex-1 bg-white border border-gray-200 rounded-2xl py-4 text-sm font-semibold text-gray-500 cursor-pointer hover:bg-gray-50 transition-colors">
-              ← Quay lại
+              Quay lại
             </button>
             <button onClick={handleSubmit} disabled={submitting}
               className={`flex-1 border-0 rounded-2xl py-4 text-sm font-bold flex items-center justify-center gap-2 transition-all shadow-md ${submitting?"bg-gray-200 text-gray-400 cursor-not-allowed":"bg-gray-900 text-white cursor-pointer hover:bg-black"}`}>
-              {submitting ? <><span className="w-4 h-4 border-2 border-white border-opacity-30 border-t-white rounded-full animate-spin" />Đang xử lý...</> : <>✓ Xác nhận mượn sách</>}
+              {submitting ? <><span className="w-4 h-4 border-2 border-white border-opacity-30 border-t-white rounded-full animate-spin" />Đang xử lý...</> : <> Xác nhận mượn sách</>}
             </button>
           </div>
         </div>

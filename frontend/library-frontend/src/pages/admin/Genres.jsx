@@ -1,92 +1,17 @@
 import { useState, useEffect, useRef } from "react";
-import { Plus, Edit2, Trash2, Search, X, Tag, Loader2, AlertCircle, CheckCircle, Hash, AlignLeft } from "lucide-react";
-import axios from "axios";
+import { Plus, Edit2, Trash2, Search, X, Tag, Loader2 } from "lucide-react";
 
-function Toast({ message, type, onClose }) {
-  useEffect(() => {
-    const t = setTimeout(onClose, 3000);
-    return () => clearTimeout(t);
-  }, [onClose]);
+// Import common components
+import Toast from "../../components/common/Toast";
+import ConfirmDialog from "../../components/common/ConfirmDialog";
+import Field from "../../components/common/Field";
+import Pagination from "../../components/common/Pagination";
 
-  const cfg = {
-    success: { bg: "bg-emerald-500", icon: <CheckCircle size={16} /> },
-    error:   { bg: "bg-rose-500",    icon: <AlertCircle  size={16} /> },
-    info:    { bg: "bg-blue-500",    icon: null },
-  };
-  const { bg, icon } = cfg[type] || cfg.info;
+// Import services
+import { genreService } from "../../services/genreService";
 
-  return (
-    <div className={`fixed top-5 right-5 z-[9999] flex items-center gap-2.5 px-4 py-3 rounded-xl text-white shadow-2xl text-sm font-medium ${bg}`}
-      style={{ animation: "slideIn 0.3s ease" }}>
-      {icon}
-      {message}
-      <button onClick={onClose} className="ml-2 opacity-70 hover:opacity-100"><X size={13} /></button>
-    </div>
-  );
-}
+{/* <Pagination page={page} totalPages={totalPages} onChange={handlePageChange} /> */}
 
-function ConfirmDialog({ name, onConfirm, onCancel }) {
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[999] backdrop-blur-sm">
-      <div className="bg-white rounded-2xl p-6 w-[380px] shadow-2xl" style={{ animation: "fadeUp 0.25s ease" }}>
-        <div className="flex items-center gap-3 mb-3">
-          <div className="w-10 h-10 bg-rose-100 rounded-full flex items-center justify-center flex-shrink-0">
-            <AlertCircle size={20} className="text-rose-500" />
-          </div>
-          <h3 className="text-base font-semibold text-gray-800">Xác nhận xóa</h3>
-        </div>
-        <p className="text-sm text-gray-500 mb-6 pl-[52px]">
-          Bạn có chắc muốn xóa thể loại <span className="font-semibold text-gray-700">"{name}"</span>? Hành động này không thể hoàn tác.
-        </p>
-        <div className="flex gap-2.5 justify-end">
-          <button onClick={onCancel} className="px-4 py-2 text-sm rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 transition">Hủy</button>
-          <button onClick={onConfirm} className="px-4 py-2 text-sm rounded-xl bg-rose-500 text-white hover:bg-rose-600 transition font-semibold">Xóa</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-
-function Pagination({ page, totalPages, onChange }) {
-  if (totalPages <= 1) return null;
-  const pages = [];
-  const delta = 2;
-  for (let i = 0; i < totalPages; i++) {
-    if (i === 0 || i === totalPages - 1 || (i >= page - delta && i <= page + delta)) {
-      pages.push(i);
-    } else if (pages[pages.length - 1] !== "...") {
-      pages.push("...");
-    }
-  }
-  const btnBase = {
-    border: "1px solid rgba(0,0,0,0.1)", borderRadius: 10,
-    padding: "7px 14px", cursor: "pointer", fontSize: "0.83rem",
-    transition: "all 0.18s", background: "#fff", color: "#555",
-  };
-  return (
-    <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 6, marginTop: "2rem" }}>
-      <button style={{ ...btnBase, opacity: page === 0 ? 0.35 : 1 }}
-        disabled={page === 0} onClick={() => onChange(page - 1)}>← Trước</button>
-      {pages.map((p, i) =>
-        p === "..." ? (
-          <span key={`e${i}`} style={{ color: "#aaa", padding: "0 4px", fontSize: "0.85rem" }}>…</span>
-        ) : (
-          <button key={p} onClick={() => onChange(p)} style={{
-            ...btnBase,
-            background: p === page ? "#1a1a1a" : "#fff",
-            color: p === page ? "#f5f0e8" : "#555",
-            border: p === page ? "1px solid #1a1a1a" : "1px solid rgba(0,0,0,0.1)",
-            fontWeight: p === page ? 700 : 400,
-            minWidth: 36, padding: "7px 10px", textAlign: "center",
-          }}>{p + 1}</button>
-        )
-      )}
-      <button style={{ ...btnBase, opacity: page >= totalPages - 1 ? 0.35 : 1 }}
-        disabled={page >= totalPages - 1} onClick={() => onChange(page + 1)}>Tiếp →</button>
-    </div>
-  );
-}
 
 const EMPTY = { code: "", name: "", description: "" };
 
@@ -120,41 +45,20 @@ function Genres() {
   useEffect(() => { fetchGenres(); }, [page, debouncedSearch]);
 
   const showToast = (message, type = "info") => setToast({ message, type });
-  const getToken = () => localStorage.getItem("token");
 
   const fetchGenres = async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({
-        page: page.toString(),
-        size: '10',
+      const res = await genreService.searchGenres({
+        page,
+        size: 10,
         sortBy: 'createdAt',
         sortDirection: 'DESC',
         ...(debouncedSearch.trim() && { searchTerm: debouncedSearch.trim() }),
       });
-      const res = await axios.get(`http://localhost:8080/api/genres/get?${params}`, {
-        headers: { Authorization: `Bearer ${getToken()}` },
-      });
-      const data = res.data;
-      const list = Array.isArray(data) ? data : data.content || [];
-
-      const withCounts = await Promise.all(
-        list.map(async (genre) => {
-          try {
-            const countRes = await axios.get(
-              `http://localhost:8080/api/genres/${genre.id}/book-count`,
-              { headers: { Authorization: `Bearer ${getToken()}` } }
-            );
-            return { ...genre, bookCount: countRes.data ?? 0 };
-          } catch {
-            return { ...genre, bookCount: 0 };
-          }
-        })
-      );
-
-      setGenres(withCounts);
-      setTotalPages(data.totalPage || Math.ceil((data.totalElement || withCounts.length) / 10));
-      setTotalElements(data.totalElement || withCounts.length);
+      setGenres(res.data.content || []);
+      setTotalPages(res.data.totalPage || 0);
+      setTotalElements(res.data.totalElement || 0);
     } catch {
       showToast("Không thể tải danh sách thể loại", "error");
     } finally {
@@ -190,14 +94,10 @@ function Genres() {
     };
     try {
       if (editing) {
-        await axios.put(`http://localhost:8080/api/genres/${currentId}`, payload, {
-          headers: { Authorization: `Bearer ${getToken()}` },
-        });
+        await genreService.updateGenre(currentId, payload);
         showToast("Cập nhật thể loại thành công!", "success");
       } else {
-        await axios.post("http://localhost:8080/api/genres/create", payload, {
-          headers: { Authorization: `Bearer ${getToken()}` },
-        });
+        await genreService.createGenre(payload);
         showToast("Thêm thể loại thành công!", "success");
       }
       await fetchGenres();
@@ -212,9 +112,7 @@ function Genres() {
   const handleDeleteConfirm = async () => {
     if (!confirm) return;
     try {
-      await axios.delete(`http://localhost:8080/api/genres/${confirm.id}`, {
-        headers: { Authorization: `Bearer ${getToken()}` },
-      });
+      await genreService.deleteGenre(confirm.id);
       showToast(`Đã xóa thể loại "${confirm.name}"`, "success");
       if (genres.length === 1 && page > 0) setPage(p => p - 1);
       else await fetchGenres();
@@ -260,69 +158,80 @@ function Genres() {
       `}</style>
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-      {confirm && <ConfirmDialog name={confirm.name} onConfirm={handleDeleteConfirm} onCancel={() => setConfirm(null)} />}
+      {confirm && (
+        <ConfirmDialog
+          title="Xác nhận xóa"
+          message={`Bạn có chắc muốn xóa thể loại "${confirm.name}"?`}
+          confirmLabel="Xóa"
+          confirmClass="bg-rose-500 hover:bg-rose-600"
+          onConfirm={handleDeleteConfirm}
+          onCancel={() => setConfirm(null)}
+        />
+      )}
 
-      <div className="p-6 w-full">
-        <div className="flex items-center justify-between mb-6">
+      <div className="p-4 md:p-6 w-full">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 md:mb-6">
           <div className="flex items-center gap-3">
-            <h2 className="text-3xl font-bold text-gray-800">Quản Lý Thể Loại</h2>
+            <h2 className="text-2xl md:text-3xl font-bold text-gray-800">Quản lý thể loại</h2>
           </div>
           <button onClick={openAdd}
-            className="flex items-center gap-2 px-4 py-2.5 bg-violet-500 hover:bg-violet-600 text-white rounded-xl text-sm font-semibold transition shadow-md shadow-violet-200">
+            className="flex items-center justify-center sm:justify-start gap-2 px-4 md:px-6 py-2 md:py-2.5 bg-violet-500 hover:bg-violet-600 text-white rounded-xl text-xs md:text-sm font-semibold transition shadow-md shadow-violet-200 w-full sm:w-auto">
+             <Plus size={16} />
              Thêm Thể Loại
           </button>
         </div>
-        <div className="mb-5 relative">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={17} />
+        <div className="mb-4 md:mb-5 relative">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" size={16} />
           <input type="text" placeholder="Tìm theo tên hoặc mã thể loại..."
             value={search} onChange={e => setSearch(e.target.value)}
-            className="w-full pl-10 pr-9 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-300 bg-gray-50" />
+            className="w-full pl-10 pr-9 py-2 md:py-2.5 border border-gray-200 rounded-xl text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-violet-300 bg-gray-50" />
           {search && (
             <button onClick={() => setSearch("")} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-              <X size={15} />
+              <X size={14} />
             </button>
           )}
         </div>
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full text-xs md:text-sm" style={{minWidth: "700px"}}>
             <thead>
               <tr className="bg-gray-50 border-b border-gray-100">
                 {["ID", "Mã thể loại", "Tên thể loại", "Mô tả", "Số sách", "Hành động"].map(h => (
-                  <th key={h} className="px-5 py-3.5 text-left text-sm font-semibold text-gray-900 uppercase tracking-wide">{h}</th>
+                  <th key={h} className="px-3 md:px-5 py-2 md:py-3.5 text-left font-semibold text-gray-900 uppercase tracking-wide whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-16 text-gray-400">
-                    <Loader2 size={26} className="animate-spin mx-auto mb-2" />
-                    <p className="text-sm">Đang tải</p>
+                  <td colSpan={6} className="text-center py-12 md:py-16 text-gray-400">
+                    <Loader2 size={24} className="animate-spin mx-auto mb-2" />
+                    <p className="text-xs md:text-sm">Đang tải</p>
                   </td>
                 </tr>
               ) : genres.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-16 text-gray-400">
-                    <Tag size={28} className="mx-auto mb-2 opacity-30" />
-                    <p className="text-sm">Không tìm thấy thể loại </p>
+                  <td colSpan={6} className="text-center py-12 md:py-16 text-gray-400">
+                    <Tag size={24} className="mx-auto mb-2 opacity-30" />
+                    <p className="text-xs md:text-sm">Không tìm thấy thể loại </p>
                   </td>
                 </tr>
               ) : (
                 genres.map((genre) => (
                   <tr key={genre.id} className="border-b border-gray-50 hover:bg-violet-50/30 transition">
-                    <td className="px-5 py-3.5 text-gray-900">{genre.id}</td>
-                    <td className="px-5 py-3.5 text-gray-900 font-mono">{genre.code}</td>
-                    <td className="px-5 py-3.5 font-semibold text-gray-800">{genre.name}</td>
-                    <td className="px-5 py-3.5 text-gray-500 max-w-[260px]">
+                    <td className="px-3 md:px-5 py-2 md:py-3.5 text-gray-900 text-xs md:text-sm font-medium">{genre.id}</td>
+                    <td className="px-3 md:px-5 py-2 md:py-3.5 text-gray-900 font-mono text-xs md:text-sm hidden sm:table-cell">{genre.code}</td>
+                    <td className="px-3 md:px-5 py-2 md:py-3.5 font-semibold text-gray-800 text-xs md:text-sm line-clamp-1">{genre.name}</td>
+                    <td className="px-3 md:px-5 py-2 md:py-3.5 text-gray-500 max-w-xs text-xs md:text-sm hidden md:table-cell">
                       <span className="line-clamp-2">{genre.description || <span className="text-gray-300 italic">—</span>}</span>
                     </td>
-                    <td className="px-5 py-3.5 text-gray-900" align="center">
+                    <td className="px-3 md:px-5 py-2 md:py-3.5 text-gray-900 text-xs md:text-sm hidden lg:table-cell" align="center">
                       {genre.bookCount || 0}
                     </td>
-                    <td className="px-5 py-3.5">
-                      <div className="flex gap-1.5">
-                        <button onClick={() => handleEdit(genre)} title="Chỉnh sửa" className="p-2 bg-blue-50 text-blue-500 rounded-lg hover:bg-blue-100 transition"><Edit2 size={15} /></button>
-                        <button onClick={() => setConfirm({ id: genre.id, name: genre.name })} title="Xóa" className="p-2 bg-rose-50 text-rose-500 rounded-lg hover:bg-rose-100 transition"><Trash2 size={15} /></button>
+                    <td className="px-3 md:px-5 py-2 md:py-3.5">
+                      <div className="flex gap-1">
+                        <button onClick={() => handleEdit(genre)} title="Chỉnh sửa" className="p-1.5 md:p-2 bg-blue-50 text-blue-500 rounded-lg hover:bg-blue-100 transition flex-shrink-0"><Edit2 size={13} className="md:w-4 md:h-4" /></button>
+                        <button onClick={() => setConfirm({ id: genre.id, name: genre.name })} title="Xóa" className="p-1.5 md:p-2 bg-rose-50 text-rose-500 rounded-lg hover:bg-rose-100 transition flex-shrink-0"><Trash2 size={13} className="md:w-4 md:h-4" /></button>
                       </div>
                     </td>
                   </tr>
@@ -330,6 +239,7 @@ function Genres() {
               )}
             </tbody>
           </table>
+          </div>
         </div>
 
         <Pagination page={page} totalPages={totalPages} onChange={handlePageChange} />

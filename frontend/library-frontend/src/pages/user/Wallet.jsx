@@ -26,6 +26,7 @@ const TX_STYLE = {
   REFUND:         { label: "Hoàn tiền", color: "text-sky-600"     },
   LOCK:           { label: "Khóa cọc",  color: "text-rose-600"    }, 
   UNLOCK:         { label: "Hoàn cọc",  color: "text-emerald-600" },
+  PENALTY:        { label: "Chi phi thuê",   color: "text-rose-600"    },
 };
 const DEFAULT_TX_STYLE = { label: "Giao dịch", color: "text-gray-400" };
 
@@ -236,7 +237,7 @@ export default function WalletPage() {
                   const desc = rawDesc.replace(/\s*-\s*TxnRef:\s*\S+/i, "").trim();
                   const amt  = tx.amount ?? 0;
                   const date = fmtDate(tx.createdAt ?? tx.date);
-                  const isNegative = amt < 0 || type === "LOCK";
+                  const isNegative = amt < 0 || type === "LOCK" || type === "PENALTY" || type === "SUBSCRIPTION";
                   const s    = TX_STYLE[type] ?? DEFAULT_TX_STYLE;
                   return (
                     <div key={tx.id}
@@ -281,7 +282,7 @@ export default function WalletPage() {
               style={{ fontFamily: "'Playfair Display', serif" }}>
               Xác nhận nạp tiền
             </p>
-            <p className="text-3xl font-black text-amber-500 my-4">{fmt(amount)}</p>
+            <p className="text-2xl text-black my-4">{fmt(amount)}</p>
             <p className="text-xs text-zinc-400 mb-6">Bạn sẽ được chuyển đến cổng thanh toán VNPay.</p>
             <div className="flex gap-2">
               <button onClick={() => setShowModal(false)} disabled={depositing}
@@ -289,7 +290,7 @@ export default function WalletPage() {
                 Huỷ
               </button>
               <button onClick={confirmDeposit} disabled={depositing}
-                className="flex-1 bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold py-2.5 rounded-full transition-all hover:-translate-y-0.5 disabled:opacity-60">
+                className="flex-1 bg-zinc-500 hover:bg-amber-600 text-white text-sm font-bold py-2.5 rounded-full transition-all hover:-translate-y-0.5 disabled:opacity-60">
                 {depositing ? "Đang xử lý…" : "Tiếp tục"}
               </button>
             </div>

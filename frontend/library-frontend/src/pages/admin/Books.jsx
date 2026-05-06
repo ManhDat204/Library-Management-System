@@ -1,88 +1,14 @@
 import { useState, useEffect, useRef } from "react";
-import { Plus, Edit2, Trash2, Search, Eye, X, BookOpen, Loader2, AlertCircle, CheckCircle, ImagePlus } from "lucide-react";
-import axios from "axios";
+import { Plus, Edit2, Trash2, Search, Eye, X, BookOpen, Loader2, ImagePlus } from "lucide-react";
 
-function Toast({ message, type, onClose }) {
-  useEffect(() => { const t = setTimeout(onClose, 3000); return () => clearTimeout(t); }, [onClose]);
-  const colors = { success: "bg-emerald-500", error: "bg-rose-500", info: "bg-blue-500" };
-  return (
-    <div className={`fixed top-5 right-5 z-[9999] flex items-center gap-3 px-5 py-3 rounded-xl text-white shadow-2xl text-sm font-medium ${colors[type] || colors.info}`}
-      style={{ animation: "slideIn 0.3s ease" }}>
-      {type === "success" && <CheckCircle size={18} />}
-      {type === "error"   && <AlertCircle  size={18} />}
-      {message}
-      <button onClick={onClose} className="ml-2 opacity-70 hover:opacity-100"><X size={14} /></button>
-    </div>
-  );
-}
+// Import common components
+import Toast from "../../components/common/Toast";
+import ConfirmDialog from "../../components/common/ConfirmDialog";
+import Field from "../../components/common/Field";
+import Pagination from "../../components/common/Pagination";
 
-function ConfirmDialog({ message, onConfirm, onCancel }) {
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[999] backdrop-blur-sm">
-      <div className="bg-white rounded-2xl p-6 w-96 shadow-2xl">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 bg-rose-100 rounded-full flex items-center justify-center">
-            <AlertCircle size={20} className="text-rose-500" />
-          </div>
-          <h3 className="text-base font-semibold text-gray-800">Xác nhận xóa</h3>
-        </div>
-        <p className="text-sm text-gray-600 mb-6">{message}</p>
-        <div className="flex gap-3 justify-end">
-          <button onClick={onCancel}  className="px-4 py-2 text-sm rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition">Hủy</button>
-          <button onClick={onConfirm} className="px-4 py-2 text-sm rounded-lg bg-rose-500 text-white hover:bg-rose-600 transition">Xóa</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Field({ label, error, children }) {
-  return (
-    <div className="flex flex-col gap-1">
-      {label && <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{label}</label>}
-      {children}
-      {error && <span className="text-xs text-rose-500">{error}</span>}
-    </div>
-  );
-}
-
-function Pagination({ page, totalPages, onChange }) {
-  if (totalPages <= 1) return null;
-  const pages = [];
-  const delta = 2;
-  for (let i = 0; i < totalPages; i++) {
-    if (i === 0 || i === totalPages - 1 || (i >= page - delta && i <= page + delta))
-      pages.push(i);
-    else if (pages[pages.length - 1] !== "...") pages.push("...");
-  }
-  const btnBase = {
-    border: "1px solid rgba(0,0,0,0.1)", borderRadius: 10,
-    padding: "7px 14px", cursor: "pointer", fontSize: "0.83rem",
-    transition: "all 0.18s", background: "#fff", color: "#555",
-  };
-  return (
-    <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 6, marginTop: "2rem" }}>
-      <button style={{ ...btnBase, opacity: page === 0 ? 0.35 : 1 }}
-        disabled={page === 0} onClick={() => onChange(page - 1)}>← Trước</button>
-      {pages.map((p, i) =>
-        p === "..." ? (
-          <span key={`e${i}`} style={{ color: "#aaa", padding: "0 4px", fontSize: "0.85rem" }}>…</span>
-        ) : (
-          <button key={p} onClick={() => onChange(p)} style={{
-            ...btnBase,
-            background: p === page ? "#1a1a1a" : "#fff",
-            color: p === page ? "#f5f0e8" : "#555",
-            border: p === page ? "1px solid #1a1a1a" : "1px solid rgba(0,0,0,0.1)",
-            fontWeight: p === page ? 700 : 400,
-            minWidth: 36, padding: "7px 10px", textAlign: "center",
-          }}>{p + 1}</button>
-        )
-      )}
-      <button style={{ ...btnBase, opacity: page >= totalPages - 1 ? 0.35 : 1 }}
-        disabled={page >= totalPages - 1} onClick={() => onChange(page + 1)}>Tiếp →</button>
-    </div>
-  );
-}
+// Import services
+import { bookService } from "../../services/bookService";
 
 const EMPTY_FORM = {
   isbn: "", title: "", authorId: "", genreId: "",
@@ -128,25 +54,17 @@ function Books() {
   useEffect(() => { fetchGenres(); fetchAuthors(); fetchPublishers(); }, []);
 
   const showToast = (message, type = "info") => setToast({ message, type });
-  const getToken  = () => localStorage.getItem("token");
-  const auth      = () => ({ Authorization: `Bearer ${getToken()}` });
 
   const fetchBooks = async () => {
     setLoading(true);
     try {
-      const res = await axios.post(
-        "http://localhost:8080/api/books/search",
-        {
-          ...(debouncedSearch.trim() && { searchTerm: debouncedSearch.trim() }),
-          page,
-          size: 10,
-          sortBy: "createdAt",
-          sortDirection: "DESC",
-        },
-        { headers: auth() }
-      );
-      console.log(res.data);
-      
+      const res = await bookService.searchBooks({
+        ...(debouncedSearch.trim() && { searchTerm: debouncedSearch.trim() }),
+        page,
+        size: 10,
+        sortBy: "createdAt",
+        sortDirection: "DESC",
+      });
       const data = res.data;
       setBooks(data.content || []);
       setTotalPages(data.totalPage || 0);
@@ -161,27 +79,23 @@ function Books() {
 
   const fetchGenres = async () => {
     try {
-      const res = await axios.get("http://localhost:8080/api/genres/get", { headers: auth() });
+      const res = await bookService.getGenres();
       setGenres(res.data || []);
     } catch {}
   };
 
-  const fetchAuthors = async () => {
-  try {
-    const res = await axios.get("http://localhost:8080/api/authors", { headers: auth() });
-
-    console.log("authors response:", res.data);
-
-    setAuthors(res.data.content || []);
-  } catch (err) {
-    console.log("authors error:", err);
-  }
-};
-
+ const fetchAuthors = async () => {
+    try {
+      const res = await bookService.getAuthors();
+      setAuthors(res.data.content || []);
+    } catch (err) {
+      console.error("authors error:", err);
+    }
+  };
 
   const fetchPublishers = async () => {
     try {
-      const res = await axios.get("http://localhost:8080/api/publishers", { headers: auth() });
+      const res = await bookService.getPublishers();
       setPublishers(Array.isArray(res.data) ? res.data : []);
     } catch {}
   };
@@ -191,9 +105,7 @@ function Books() {
     try {
       const form = new FormData();
       form.append("file", file);
-      const res = await axios.post("http://localhost:8080/api/upload/image", form, {
-        headers: { ...auth(), "Content-Type": "multipart/form-data" },
-      });
+      const res = await bookService.uploadImage(form);
       return res.data.url;
     } catch {
       showToast("Upload ảnh thất bại", "error");
@@ -249,10 +161,10 @@ function Books() {
       };
 
       if (editingId) {
-        await axios.put(`http://localhost:8080/api/books/${editingId}`, payload, { headers: auth() });
+        await bookService.updateBook(editingId, payload);
         showToast("Cập nhật sách thành công!", "success");
       } else {
-        await axios.post("http://localhost:8080/api/books/admin", payload, { headers: auth() });
+        await bookService.createBook(payload);
         showToast("Thêm sách thành công!", "success");
       }
       await fetchBooks();
@@ -267,7 +179,7 @@ function Books() {
   const handleDeleteConfirm = async () => {
     if (!confirm) return;
     try {
-      await axios.delete(`http://localhost:8080/api/books/${confirm.id}`, { headers: auth() });
+      await bookService.deleteBook(confirm.id);
       showToast(`Đã xóa sách "${confirm.title}"`, "success");
       if (books.length === 1 && page > 0) setPage(p => p - 1);
       else await fetchBooks();
@@ -330,106 +242,177 @@ function Books() {
       {toast   && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       {confirm && (
         <ConfirmDialog
+          title="Xác nhận xóa"
           message={`Bạn có chắc muốn xóa sách "${confirm.title}"?`}
+          confirmLabel="Xóa"
+          confirmClass="bg-rose-500 hover:bg-rose-600"
           onConfirm={handleDeleteConfirm}
           onCancel={() => setConfirm(null)}
         />
       )}
 
-      <div style={{ width: "100%", padding: "24px", boxSizing: "border-box" }}>
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            
-            <h2 className="text-3xl font-bold text-gray-800">Quản lý Sách</h2>
-          </div>
-          <button onClick={handleAddBook}
-            className="flex items-center gap-2 px-6 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-sm font-semibold transition shadow-md shadow-blue-200">
+      <div style={{ width: "100%", padding: "16px", boxSizing: "border-box" }} className="md:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 md:mb-6">
+          <h2 className="text-2xl md:text-3xl font-bold text-gray-800">Quản lý Sách</h2>
+          <button
+            onClick={handleAddBook}
+            className="flex items-center justify-center sm:justify-start gap-2 px-4 md:px-6 py-2 md:py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-xs md:text-sm font-semibold transition shadow-md shadow-blue-200 w-full sm:w-auto"
+          >
+            <Plus size={16} />
             Thêm Sách
           </button>
         </div>
-        <div className="mb-5 relative">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-          <input type="text" placeholder="Tìm kiếm theo tên sách, ISBN..." value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="w-full pl-11 pr-10 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 bg-gray-50" />
+
+        <div className="mb-4 md:mb-5 relative">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 md:w-4.5 h-4 md:h-4.5" size={16} />
+          <input
+            type="text"
+            placeholder="Tìm kiếm theo tên sách, ISBN..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-10 pr-10 py-2 md:py-2.5 border border-gray-200 rounded-xl text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 bg-gray-50"
+          />
           {search && (
-            <button onClick={() => setSearch("")} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+            <button
+              onClick={() => setSearch("")}
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >
               <X size={16} />
             </button>
           )}
         </div>
 
+        {/* ─── BOOK TABLE ─── */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "800px" }}>
               <thead>
-                <tr style={{ background: "#f9fafb", borderBottom: "1px solid #f3f4f6" }}>
-                  {["ID", "Ảnh bìa", "Tên sách", "Tác giả", "Thể loại", "Số lượng", "Còn lại", "Giá", "Hành động"].map(h => (
-                    <th key={h} style={{ padding: "14px 20px", textAlign: "left", fontSize: "11px", fontWeight: 700, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em", whiteSpace: "nowrap" }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
+              <tr className="bg-gray-50 border-b border-gray-100">
+                {[
+                  "ID", "Ảnh bìa", "Tên sách","Tác giả","Thể loại","Số lượng","Còn lại","Giá","Hành động",
+                ].map((h) => (
+                  <th key={h} className="px-3 md:px-5 py-2.5 md:py-3.5 text-left text-xs md:text-sm font-semibold text-gray-900 uppercase tracking-wide whitespace-nowrap">
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={9} style={{ textAlign: "center", padding: "80px 0", color: "#9ca3af" }}>
-                    <Loader2 size={30} className="animate-spin mx-auto mb-2" />
-                    <p style={{ fontSize: "14px" }}>Đang tải dữ liệu</p>
-                  </td></tr>
-                ) : books.length === 0 ? (
-                  <tr><td colSpan={9} style={{ textAlign: "center", padding: "80px 0", color: "#9ca3af" }}>
-                    <BookOpen size={36} className="mx-auto mb-2 opacity-30" />
-                    <p style={{ fontSize: "14px" }}>Không tìm thấy sách </p>
-                  </td></tr>
-                ) : books.map(book => (
-                  <tr key={book.id} style={{ borderBottom: "1px solid #f9fafb" }}
-                    onMouseEnter={e => e.currentTarget.style.background = "rgba(239,246,255,0.4)"}
-                    onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-                    <td style={{ padding: "16px 20px", color: "#6b7280", fontSize: 14 }}>{book.id}</td>
-                    <td style={{ padding: "16px 20px" }}>
-                      {book.coverImageUrl
-                        ? <img src={book.coverImageUrl} alt={book.title}
-                            style={{ width: 80, height: 116, objectFit: "cover", borderRadius: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.12)" }}
-                            onError={e => e.target.style.display = "none"} />
-                        : <div style={{ width: 64, height: 90, background: "#f3f4f6", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                            <BookOpen size={20} color="#d1d5db" />
-                          </div>
-                      }
-                    </td>
-                    <td style={{ padding: "16px 20px" }}>
-                      <span style={{ fontWeight: 600, fontSize: 15, color: "#1f2937" }}>{book.title}</span>
-                    </td>
-                    <td style={{ padding: "16px 20px", color: "#6b7280", fontSize: 14 }}>{book.authorName}</td>
-                    <td style={{ padding: "16px 20px", color: "#111111", fontSize: 14, fontWeight: 500 }}>
-                      {book.genreName}
-                    </td>
-                    <td style={{ padding: "16px 20px", fontWeight: 700, fontSize: 16, color: "#1f2937" }}>{book.totalCopies}</td>
-                    <td style={{ padding: "16px 20px" }}>
-                      <span style={{ fontWeight: 700, fontSize: 16, color: "#111111" }}>
-                        {book.availableCopies ?? 0}
-                      </span>
-                    </td>
-                    <td style={{ padding: "16px 20px", color: "#374151", fontWeight: 500, fontSize: 14, whiteSpace: "nowrap" }}>
-                      {book.price ? `${Number(book.price).toLocaleString()} ` : "—"}
-                    </td>
-                    <td style={{ padding: "16px 20px" }}>
-                      <div style={{ display: "flex", gap: 8 }}>
-                        <button onClick={() => { setSelectedBook(book); setShowDetail(true); }} title="Xem chi tiết"
-                          className="p-2.5 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition">
-                          <Eye size={17} />
-                        </button>
-                        <button onClick={() => handleEdit(book)} title="Chỉnh sửa"
-                          className="p-2.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition">
-                          <Edit2 size={17} />
-                        </button>
-                        <button onClick={() => setConfirm({ id: book.id, title: book.title })} title="Xóa"
-                          className="p-2.5 bg-rose-50 text-rose-500 rounded-lg hover:bg-rose-100 transition">
-                          <Trash2 size={17} />
-                        </button>
-                        
-                      </div>
+                  <tr>
+                    <td colSpan={9} style={{ textAlign: "center", padding: "60px 20px", color: "#9ca3af" }}>
+                      <Loader2 size={28} className="animate-spin mx-auto mb-2" />
+                      <p style={{ fontSize: "13px" }}>Đang tải dữ liệu</p>
                     </td>
                   </tr>
-                ))}
+                ) : books.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} style={{ textAlign: "center", padding: "60px 20px", color: "#9ca3af" }}>
+                      <BookOpen size={32} className="mx-auto mb-2 opacity-30" />
+                      <p style={{ fontSize: "13px" }}>Không tìm thấy sách</p>
+                    </td>
+                  </tr>
+                ) : (
+                  books.map((book) => (
+                    <tr
+                      key={book.id}
+                      style={{ borderBottom: "1px solid #f9fafb" }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(239,246,255,0.4)")}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                    >
+                      <td style={{ padding: "12px 12px", color: "#000000", fontSize: "12px", fontWeight: 600 }} className="md:text-base md:px-5 md:py-4">
+                        {book.id}
+                      </td>
+                      <td style={{ padding: "12px 12px" }} className="md:px-5 md:py-4">
+                        {book.coverImageUrl ? (
+                          <img
+                            src={book.coverImageUrl}
+                            alt={book.title}
+                            style={{
+                              width: 60,
+                              height: 85,
+                              objectFit: "cover",
+                              borderRadius: 8,
+                              boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
+                            }}
+                            className="md:w-20 md:h-28"
+                            onError={(e) => (e.target.style.display = "none")}
+                          />
+                        ) : (
+                          <div
+                            style={{
+                              width: 50,
+                              height: 70,
+                              background: "#f3f4f6",
+                              borderRadius: 8,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}
+                            className="md:w-20 md:h-28"
+                          >
+                            <BookOpen size={16} color="#d1d5db" />
+                          </div>
+                        )}
+                      </td>
+                      <td style={{ padding: "12px 12px", fontSize: "12px", fontWeight: 600, color: "#000000", maxWidth: "100px" }} className="md:text-base md:px-5 md:py-4 md:max-w-none">
+                        <span className="line-clamp-2">{book.title}</span>
+                      </td>
+                      <td style={{ padding: "12px 12px", color: "#000000", fontSize: "12px" }} className="md:text-base md:px-5 md:py-4 hidden sm:table-cell">
+                        {book.authorName}
+                      </td>
+                      <td style={{ padding: "12px 12px", color: "#000000", fontSize: "12px", fontWeight: 500 }} className="md:text-base md:px-5 md:py-4 hidden md:table-cell">
+                        {book.genreName}
+                      </td>
+                      <td style={{ padding: "12px 12px", fontWeight: 700, fontSize: "12px", color: "#000000" }} className="md:text-base md:px-5 md:py-4 hidden lg:table-cell">
+                        {book.totalCopies}
+                      </td>
+                      <td style={{ padding: "12px 12px", fontWeight: 700, fontSize: "12px", color: "#000000" }} className="md:text-base md:px-5 md:py-4">
+                        {book.availableCopies ?? 0}
+                      </td>
+                      <td
+                        style={{
+                          padding: "12px 12px",
+                          color: "#000000",
+                          fontWeight: 500,
+                          fontSize: "12px",
+                          whiteSpace: "nowrap",
+                        }}
+                        className="md:text-base md:px-5 md:py-4 hidden lg:table-cell"
+                      >
+                        {book.price ? `${Number(book.price).toLocaleString()} ₫` : "—"}
+                      </td>
+                      <td style={{ padding: "12px 12px" }} className="md:px-5 md:py-4">
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <button
+                            onClick={() => {
+                              setSelectedBook(book);
+                              setShowDetail(true);
+                            }}
+                            title="Xem chi tiết"
+                            className="p-1.5 md:p-2.5 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition flex-shrink-0"
+                          >
+                            <Eye size={14} className="md:w-4.5 md:h-4.5" />
+                          </button>
+                          <button
+                            onClick={() => handleEdit(book)}
+                            title="Chỉnh sửa"
+                            className="p-1.5 md:p-2.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition flex-shrink-0"
+                          >
+                            <Edit2 size={14} className="md:w-4.5 md:h-4.5" />
+                          </button>
+                          <button
+                            onClick={() => setConfirm({ id: book.id, title: book.title })}
+                            title="Xóa"
+                            className="p-1.5 md:p-2.5 bg-rose-50 text-rose-500 rounded-lg hover:bg-rose-100 transition flex-shrink-0"
+                          >
+                            <Trash2 size={14} className="md:w-4.5 md:h-4.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -437,160 +420,286 @@ function Books() {
 
         <Pagination page={page} totalPages={totalPages} onChange={handlePageChange} />
       </div>
+
+  
       {showDetail && selectedBook && (
-        <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50 p-4 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl modal-enter">
-            <div className="flex items-center justify-between p-6 border-b border-gray-100">
-              <h2 className="text-lg font-bold text-gray-800">Chi tiết sách</h2>
-              <button onClick={() => setShowDetail(false)} className="p-2 hover:bg-gray-100 rounded-lg transition"><X size={18} /></button>
+  <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50 p-4 backdrop-blur-sm">
+    <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl modal-enter">
+      <div className="flex items-center justify-between p-6 border-b border-gray-100">
+        <h2 className="text-lg font-bold text-gray-800">Chi tiết sách</h2>
+        <button onClick={() => setShowDetail(false)} className="p-2 hover:bg-gray-100 rounded-lg transition">
+          <X size={18} />
+        </button>
+      </div>
+
+      <div className="p-6 flex gap-6">
+        <div className="flex-shrink-0">
+          {selectedBook.coverImageUrl ? (
+            <img src={selectedBook.coverImageUrl} alt={selectedBook.title}
+              className="w-60 h-80 object-cover rounded-xl shadow-md" />
+          ) : (
+            <div className="w-48 h-64 bg-gray-100 rounded-xl flex items-center justify-center">
+              <BookOpen size={32} className="text-gray-300" />
             </div>
-            <div className="p-6 flex gap-6">
-              <div className="flex-shrink-0">
-                {selectedBook.coverImageUrl
-                  ? <img src={selectedBook.coverImageUrl} alt={selectedBook.title} className="w-60 h-80 object-cover rounded-xl shadow-md" />
-                  : <div className="w-48 h-64 bg-gray-100 rounded-xl flex items-center justify-center"><BookOpen size={32} className="text-gray-300" /></div>
-                }
-              </div>
-              <div className="flex-1 grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
-                {[
-                  ["ISBN",          selectedBook.isbn],
-                  ["Tên sách",      selectedBook.title],
-                  ["Tác giả",       selectedBook.authorName],
-                  ["Thể loại",      selectedBook.genreName],
-                  ["Nhà xuất bản",  selectedBook.publisherName],
-                  ["Ngày xuất bản", selectedBook.publicationDate],
-                  ["Ngôn ngữ",      selectedBook.language],
-                  ["Số trang",      selectedBook.pages],
-                  ["Tổng số bản",   selectedBook.totalCopies],
-                  ["Còn lại",       selectedBook.availableCopies],
-                  ["Giá",           selectedBook.price ? `${Number(selectedBook.price).toLocaleString()} ` : "—"],
-                ].filter(([, v]) => v !== undefined && v !== null && v !== "").map(([label, val]) => (
-                  <div key={label}>
-                    <p className="text-xs font-semibold text-gray-400 uppercase mb-1">{label}</p>
-                    <p className="text-gray-800 font-medium text-base">{val}</p>
-                  </div>
-                ))}
-                {selectedBook.description && (
-                  <div className="col-span-2">
-                    <p className="text-xs font-semibold text-gray-400 uppercase mb-1">Mô tả</p>
-                    <p className="text-gray-600 leading-relaxed">{selectedBook.description}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className="flex justify-end gap-3 px-6 pb-6">
-              <button onClick={() => { setShowDetail(false); handleEdit(selectedBook); }}
-                className="px-4 py-2 bg-blue-500 text-white rounded-xl text-sm font-semibold hover:bg-blue-600 transition flex items-center gap-2">
-                <Edit2 size={15} /> Chỉnh sửa
-              </button>
-              <button onClick={() => setShowDetail(false)}
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-xl text-sm font-semibold hover:bg-gray-200 transition">Đóng</button>
-            </div>
+          )}
+        </div>
+
+        <div className="flex-1 flex gap-x-6 text-sm">
+          {/* Cột trái */}
+          <div className="flex-1 flex flex-col gap-y-4">
+            {[
+              ["ISBN", selectedBook.isbn],
+              ["Tác giả", selectedBook.authorName],
+              ["Nhà xuất bản", selectedBook.publisherName],
+              ["Ngôn ngữ", selectedBook.language],
+              ["Tổng số bản", selectedBook.totalCopies],
+              ["Giá", selectedBook.price ? `${Number(selectedBook.price).toLocaleString()} ₫` : "—"],
+            ].filter(([, v]) => v !== undefined && v !== null && v !== "")
+              .map(([label, val]) => (
+                <div key={label}>
+                  <p className="text-xs font-semibold text-gray-400 uppercase mb-1">{label}</p>
+                  <p className="text-gray-800 font-medium">{val}</p>
+                </div>
+              ))}
+          </div>
+
+          {/* Cột phải */}
+          <div className="flex-1 flex flex-col gap-y-4">
+            {[
+              ["Tên sách", selectedBook.title],
+              ["Thể loại", selectedBook.genreName],
+              ["Ngày xuất bản", selectedBook.publicationDate],
+              ["Số trang", selectedBook.pages],
+              ["Còn lại", selectedBook.availableCopies],
+            ].filter(([, v]) => v !== undefined && v !== null && v !== "")
+              .map(([label, val]) => (
+                <div key={label}>
+                  <p className="text-xs font-semibold text-gray-400 uppercase mb-1">{label}</p>
+                  <p className="text-gray-800 font-medium">{val}</p>
+                </div>
+              ))}
+
+            {/* Mô tả ngang hàng với Giá */}
+            <div>
+            <p className="text-xs font-semibold text-gray-400 uppercase mb-1">Mô tả</p>
+            <p className="text-black-600 font-semibold leading-relaxed">
+              {selectedBook.description || "Chưa có mô tả"}
+            </p>
+          </div>
           </div>
         </div>
-      )}
+      </div>
+
+      <div className="flex justify-end gap-3 px-6 pb-6">
+        <button onClick={() => { setShowDetail(false); handleEdit(selectedBook); }}
+          className="px-4 py-2 bg-blue-500 text-white rounded-xl text-sm font-semibold hover:bg-blue-600 transition flex items-center gap-2">
+          <Edit2 size={15} /> Chỉnh sửa
+        </button>
+        <button onClick={() => setShowDetail(false)}
+          className="px-4 py-2 bg-gray-100 text-gray-700 rounded-xl text-sm font-semibold hover:bg-gray-200 transition">
+          Đóng
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+      {/* ─── FORM MODAL ─── */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50 p-4 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[92vh] overflow-y-auto shadow-2xl modal-enter">
-            <div className="flex items-center justify-between p-6 border-b border-gray-100">
-              <div className="flex items-center gap-3">
-                <h2 className="text-lg font-bold text-gray-800">{editingId ? "Cập nhật sách" : "Thêm sách mới"}</h2>
-              </div>
-              <button onClick={closeForm} className="p-2 hover:bg-gray-100 rounded-lg transition"><X size={18} /></button>
+        <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50 p-3 md:p-4 backdrop-blur-sm overflow-y-auto">
+          <div className="bg-white rounded-2xl w-full max-w-full md:max-w-3xl shadow-2xl modal-enter my-4">
+            <div className="flex items-center justify-between p-4 md:p-6 border-b border-gray-100 sticky top-0 bg-white">
+              <h2 className="text-lg md:text-xl font-bold text-gray-800">
+                {editingId ? "Cập nhật sách" : "Thêm sách mới"}
+              </h2>
+              <button onClick={closeForm} className="p-1.5 md:p-2 hover:bg-gray-100 rounded-lg transition flex-shrink-0">
+                <X size={20} />
+              </button>
             </div>
 
-            <div className="p-6 grid grid-cols-2 gap-4">
-              <Field label="ISBN " error={errors.isbn}>
-                <input placeholder="978-..." value={formData.isbn} onChange={e => handleChange("isbn", e.target.value)}
-                  className={`border rounded-xl px-3 py-2.5 text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-300 ${errors.isbn ? "border-rose-400 bg-rose-50" : "border-gray-200"}`} />
+            <div className="p-4 md:p-6 grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 max-h-[calc(100vh-200px)] overflow-y-auto">
+              <Field label="ISBN" error={errors.isbn}>
+                <input
+                  placeholder="978-..."
+                  value={formData.isbn}
+                  onChange={(e) => handleChange("isbn", e.target.value)}
+                  className={`border rounded-xl px-3 py-2 md:py-2.5 text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-300 ${
+                    errors.isbn ? "border-rose-400 bg-rose-50" : "border-gray-200"
+                  }`}
+                />
               </Field>
 
-              <Field label="Tên sách " error={errors.title}>
-                <input placeholder="Nhập tên sách" value={formData.title} onChange={e => handleChange("title", e.target.value)}
-                  className={`border rounded-xl px-3 py-2.5 text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-300 ${errors.title ? "border-rose-400 bg-rose-50" : "border-gray-200"}`} />
+              <Field label="Tên sách" error={errors.title}>
+                <input
+                  placeholder="Nhập tên sách"
+                  value={formData.title}
+                  onChange={(e) => handleChange("title", e.target.value)}
+                  className={`border rounded-xl px-3 py-2 md:py-2.5 text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-300 ${
+                    errors.title ? "border-rose-400 bg-rose-50" : "border-gray-200"
+                  }`}
+                />
               </Field>
 
-              <Field label="Tác giả " error={errors.authorId}>
-                <select value={formData.authorId} onChange={e => handleChange("authorId", e.target.value)}
-                  className={`border rounded-xl px-3 py-2.5 text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white ${errors.authorId ? "border-rose-400 bg-rose-50" : "border-gray-200"}`}>
-                  <option value="">Chọn tác giả </option>
-                  {authors.map(a => (
-                    <option key={a.id} value={a.id}>{a.authorName}</option>
+              <Field label="Tác giả" error={errors.authorId}>
+                <select
+                  value={formData.authorId}
+                  onChange={(e) => handleChange("authorId", e.target.value)}
+                  className={`border rounded-xl px-3 py-2.5 text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white ${
+                    errors.authorId ? "border-rose-400 bg-rose-50" : "border-gray-200"
+                  }`}
+                >
+                  <option value="">Chọn tác giả</option>
+                  {authors.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.authorName}
+                    </option>
                   ))}
                 </select>
               </Field>
 
-              <Field label="Thể loại " error={errors.genreId}>
-                <select value={formData.genreId} onChange={e => handleChange("genreId", e.target.value)}
-                  className={`border rounded-xl px-3 py-2.5 text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white ${errors.genreId ? "border-rose-400 bg-rose-50" : "border-gray-200"}`}>
-                  <option value="">Chọn thể loại </option>
-                  {genres.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+              <Field label="Thể loại" error={errors.genreId}>
+                <select
+                  value={formData.genreId}
+                  onChange={(e) => handleChange("genreId", e.target.value)}
+                  className={`border rounded-xl px-3 py-2.5 text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white ${
+                    errors.genreId ? "border-rose-400 bg-rose-50" : "border-gray-200"
+                  }`}
+                >
+                  <option value="">Chọn thể loại</option>
+                  {genres.map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.name}
+                    </option>
+                  ))}
                 </select>
               </Field>
 
-            
-              <Field label="Nhà xuất bản " error={errors.publisherId}>
-                <select value={formData.publisherId} onChange={e => handleChange("publisherId", e.target.value)}
-                  className={`border rounded-xl px-3 py-2.5 text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white ${errors.publisherId ? "border-rose-400 bg-rose-50" : "border-gray-200"}`}>
-                  <option value="">Chọn nhà xuất bản </option>
-                  {publishers.map(p => (
-                    <option key={p.id} value={p.id}>{p.name}</option>
+              <Field label="Nhà xuất bản" error={errors.publisherId}>
+                <select
+                  value={formData.publisherId}
+                  onChange={(e) => handleChange("publisherId", e.target.value)}
+                  className={`border rounded-xl px-3 py-2.5 text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white ${
+                    errors.publisherId ? "border-rose-400 bg-rose-50" : "border-gray-200"
+                  }`}
+                >
+                  <option value="">Chọn nhà xuất bản</option>
+                  {publishers.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
                   ))}
                 </select>
               </Field>
 
               <Field label="Ngày xuất bản">
-                <input type="date" value={formData.publicationDate} onChange={e => handleChange("publicationDate", e.target.value)}
-                  className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-300" />
+                <input
+                  type="date"
+                  value={formData.publicationDate}
+                  onChange={(e) => handleChange("publicationDate", e.target.value)}
+                  className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-300"
+                />
               </Field>
 
               <Field label="Ngôn ngữ">
-                <input placeholder="Tiếng Việt, English..." value={formData.language} onChange={e => handleChange("language", e.target.value)}
-                  className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-300" />
+                <input
+                  placeholder="Tiếng Việt, English..."
+                  value={formData.language}
+                  onChange={(e) => handleChange("language", e.target.value)}
+                  className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-300"
+                />
               </Field>
 
               <Field label="Số trang" error={errors.pages}>
-                <input type="number" min="1" placeholder="300" value={formData.pages} onChange={e => handleChange("pages", e.target.value)}
-                  className={`border rounded-xl px-3 py-2.5 text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-300 ${errors.pages ? "border-rose-400 bg-rose-50" : "border-gray-200"}`} />
+                <input
+                  type="number"
+                  min="1"
+                  placeholder="300"
+                  value={formData.pages}
+                  onChange={(e) => handleChange("pages", e.target.value)}
+                  className={`border rounded-xl px-3 py-2.5 text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-300 ${
+                    errors.pages ? "border-rose-400 bg-rose-50" : "border-gray-200"
+                  }`}
+                />
               </Field>
 
-              <Field label="Tổng số bản " error={errors.totalCopies}>
-                <input type="number" min="0" placeholder="10" value={formData.totalCopies} onChange={e => handleChange("totalCopies", e.target.value)}
-                  className={`border rounded-xl px-3 py-2.5 text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-300 ${errors.totalCopies ? "border-rose-400 bg-rose-50" : "border-gray-200"}`} />
+              <Field label="Tổng số bản" error={errors.totalCopies}>
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="10"
+                  value={formData.totalCopies}
+                  onChange={(e) => handleChange("totalCopies", e.target.value)}
+                  className={`border rounded-xl px-3 py-2.5 text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-300 ${
+                    errors.totalCopies ? "border-rose-400 bg-rose-50" : "border-gray-200"
+                  }`}
+                />
               </Field>
 
-              <Field label="Số bản còn lại " error={errors.availableCopies}>
-                <input type="number" min="0" placeholder="10" value={formData.availableCopies} onChange={e => handleChange("availableCopies", e.target.value)}
-                  className={`border rounded-xl px-3 py-2.5 text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-300 ${errors.availableCopies ? "border-rose-400 bg-rose-50" : "border-gray-200"}`} />
+              <Field label="Số bản còn lại" error={errors.availableCopies}>
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="10"
+                  value={formData.availableCopies}
+                  onChange={(e) => handleChange("availableCopies", e.target.value)}
+                  className={`border rounded-xl px-3 py-2.5 text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-300 ${
+                    errors.availableCopies ? "border-rose-400 bg-rose-50" : "border-gray-200"
+                  }`}
+                />
               </Field>
 
               <Field label="Giá (VNĐ)" error={errors.price}>
-                <input type="number" min="0" placeholder="150000" value={formData.price} onChange={e => handleChange("price", e.target.value)}
-                  className={`border rounded-xl px-3 py-2.5 text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-300 ${errors.price ? "border-rose-400 bg-rose-50" : "border-gray-200"}`} />
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="150000"
+                  value={formData.price}
+                  onChange={(e) => handleChange("price", e.target.value)}
+                  className={`border rounded-xl px-3 py-2.5 text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-300 ${
+                    errors.price ? "border-rose-400 bg-rose-50" : "border-gray-200"
+                  }`}
+                />
               </Field>
 
               <div />
 
               <div className="col-span-2">
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1.5">Ảnh bìa</label>
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1.5">
+                  Ảnh bìa
+                </label>
                 <div
                   onClick={() => fileInputRef.current?.click()}
-                  onDragOver={e => e.preventDefault()}
-                  onDrop={e => { e.preventDefault(); handleFileChange(e.dataTransfer.files[0]); }}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    handleFileChange(e.dataTransfer.files[0]);
+                  }}
                   className="flex items-center gap-4 border-2 border-dashed border-gray-200 rounded-xl p-4 cursor-pointer hover:border-blue-300 hover:bg-blue-50/30 transition group"
                 >
                   {coverPreview ? (
                     <>
-                      <img src={coverPreview} alt="preview"
+                      <img
+                        src={coverPreview}
+                        alt="preview"
                         className="w-20 h-28 object-cover rounded-lg shadow-sm border flex-shrink-0"
-                        onError={e => e.target.style.display = "none"} />
+                        onError={(e) => (e.target.style.display = "none")}
+                      />
                       <div className="flex flex-col gap-1 flex-1">
-                        <p className="text-sm font-medium text-gray-700">{coverImageFile ? coverImageFile.name : "Ảnh hiện tại"}</p>
+                        <p className="text-sm font-medium text-gray-700">
+                          {coverImageFile ? coverImageFile.name : "Ảnh hiện tại"}
+                        </p>
                         <p className="text-xs text-blue-500 group-hover:underline">Nhấn để đổi ảnh khác</p>
                       </div>
-                      <button type="button"
-                        onClick={e => { e.stopPropagation(); setCoverImageFile(null); setCoverPreview(""); handleChange("coverImageUrl", ""); }}
-                        className="p-1.5 bg-rose-50 text-rose-400 rounded-lg hover:bg-rose-100 transition">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setCoverImageFile(null);
+                          setCoverPreview("");
+                          handleChange("coverImageUrl", "");
+                        }}
+                        className="p-1.5 bg-rose-50 text-rose-400 rounded-lg hover:bg-rose-100 transition"
+                      >
                         <X size={14} />
                       </button>
                     </>
@@ -602,8 +711,13 @@ function Books() {
                     </div>
                   )}
                 </div>
-                <input ref={fileInputRef} type="file" accept="image/*" className="hidden"
-                  onChange={e => handleFileChange(e.target.files[0])} />
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => handleFileChange(e.target.files[0])}
+                />
                 {uploadingImage && (
                   <div className="flex items-center gap-2 mt-2 text-xs text-blue-500">
                     <Loader2 size={13} className="animate-spin" /> Đang tải ảnh lên...
@@ -613,9 +727,13 @@ function Books() {
 
               <div className="col-span-2">
                 <Field label="Mô tả">
-                  <textarea rows={3} placeholder="Mô tả ngắn về nội dung sách..." value={formData.description}
-                    onChange={e => handleChange("description", e.target.value)}
-                    className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-300 resize-none" />
+                  <textarea
+                    rows={3}
+                    placeholder="Mô tả ngắn về nội dung sách..."
+                    value={formData.description}
+                    onChange={(e) => handleChange("description", e.target.value)}
+                    className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-300 resize-none"
+                  />
                 </Field>
               </div>
             </div>
@@ -623,12 +741,18 @@ function Books() {
             <div className="flex items-center justify-between px-6 pb-6">
               <p className="text-xs text-gray-400">* Trường bắt buộc</p>
               <div className="flex gap-3">
-                <button onClick={closeForm} disabled={submitting}
-                  className="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-xl text-sm font-semibold hover:bg-gray-200 transition disabled:opacity-50">
+                <button
+                  onClick={closeForm}
+                  disabled={submitting}
+                  className="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-xl text-sm font-semibold hover:bg-gray-200 transition disabled:opacity-50"
+                >
                   Hủy
                 </button>
-                <button onClick={handleSubmit} disabled={submitting || uploadingImage}
-                  className="px-5 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-sm font-semibold transition shadow-md shadow-blue-200 disabled:opacity-50 flex items-center gap-2">
+                <button
+                  onClick={handleSubmit}
+                  disabled={submitting || uploadingImage}
+                  className="px-5 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-sm font-semibold transition shadow-md shadow-blue-200 disabled:opacity-50 flex items-center gap-2"
+                >
                   {(submitting || uploadingImage) && <Loader2 size={15} className="animate-spin" />}
                   {editingId ? "Cập nhật" : "Thêm sách"}
                 </button>

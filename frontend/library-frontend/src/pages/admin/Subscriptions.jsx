@@ -1,41 +1,12 @@
 import { useState, useEffect } from "react";
 import { X, Star, Loader2, AlertCircle, CheckCircle, ChevronLeft, ChevronRight, Eye } from "lucide-react";
-import axios from "axios";
 
+// Import common components
+import Toast from "../../components/common/Toast";
+import ConfirmDialog from "../../components/common/ConfirmDialog";
 
-function Toast({ message, type, onClose }) {
-  useEffect(() => { const t = setTimeout(onClose, 3000); return () => clearTimeout(t); }, [onClose]);
-  const colors = { success: "bg-emerald-500", error: "bg-rose-500", info: "bg-blue-500" };
-  return (
-    <div className={`fixed top-5 right-5 z-[9999] flex items-center gap-3 px-5 py-3 rounded-xl text-white shadow-2xl text-sm font-medium ${colors[type] || colors.info}`}
-      style={{ animation: "slideIn 0.3s ease" }}>
-      {type === "success" && <CheckCircle size={18} />}
-      {type === "error"   && <AlertCircle  size={18} />}
-      {message}
-      <button onClick={onClose} className="ml-2 opacity-70 hover:opacity-100"><X size={14} /></button>
-    </div>
-  );
-}
-
-function ConfirmDialog({ title, message, confirmLabel, confirmClass, onConfirm, onCancel }) {
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[999] backdrop-blur-sm">
-      <div className="bg-white rounded-2xl p-6 w-96 shadow-2xl" style={{ animation: "fadeUp 0.25s ease" }}>
-        <div className="flex items-center gap-3 mb-3">
-          <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
-            <AlertCircle size={20} className="text-amber-500" />
-          </div>
-          <h3 className="text-base font-semibold text-gray-800">{title}</h3>
-        </div>
-        <p className="text-sm text-gray-500 mb-6 pl-[52px]">{message}</p>
-        <div className="flex gap-2.5 justify-end">
-          <button onClick={onCancel} className="px-4 py-2 text-sm rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 transition">Hủy</button>
-          <button onClick={onConfirm} className={`px-4 py-2 text-sm rounded-xl text-white font-semibold transition ${confirmClass}`}>{confirmLabel}</button>
-        </div>
-      </div>
-    </div>
-  );
-}
+// Import services
+import { subscriptionService } from "../../services/subscriptionService";
 
 function SubBadge({ sub }) {
   if (sub.isExpired === true)  return <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-600">Hết hạn</span>;
@@ -55,18 +26,13 @@ function Subscriptions() {
   const [detail, setDetail]         = useState(null);
 
   const showToast = (msg, type = "info") => setToast({ message: msg, type });
-  const getToken  = () => localStorage.getItem("token");
-  const auth      = () => ({ Authorization: `Bearer ${getToken()}` });
   const pageSize  = 10;
 
   const fetchSubs = async (p = page) => {
     setLoading(true);
     try {
-      const res = await axios.get("http://localhost:8080/api/subscriptions/admin", {
-        params: { page: p, size: pageSize },
-        headers: auth(),
-      });
-      const data = res.data;
+      const res = await subscriptionService.searchSubscriptions({ page: p, size: pageSize });
+      const data = res.data || res;
       if (Array.isArray(data)) {
         setSubs(data);
         setTotalPages(1);
@@ -89,7 +55,7 @@ function Subscriptions() {
   const handleDeactivateExpired = async () => {
     setConfirm(null);
     try {
-      await axios.get("http://localhost:8080/api/subscriptions/admin/deactivate-expired", { headers: auth() });
+      await subscriptionService.deactivateExpired();
       showToast("Đã cập nhật các gói hết hạn!", "success");
       fetchSubs();
     } catch { showToast("Thao tác thất bại", "error"); }
@@ -117,22 +83,10 @@ function Subscriptions() {
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <div>
-              <h2 className="text-3xl font-bold text-gray-800">Quản Lý Đăng Ký</h2>
+              <h2 className="text-3xl font-bold text-gray-800">Quản lý đăng ký</h2>
             </div>
           </div>
-          <button
-            onClick={() => setConfirm({
-              title: "Cập nhật hết hạn",
-              message: "Hệ thống sẽ cập nhật tất cả đăng ký đã hết hạn. Tiếp tục?",
-              confirmLabel: "Thực hiện",
-              confirmClass: "bg-amber-500 hover:bg-amber-600",
-              onConfirm: handleDeactivateExpired,
-            })}
-            className="flex items-center gap-2 px-4 py-2.5 bg-amber-50 text-amber-600 border border-amber-200 rounded-xl text-sm font-semibold hover:bg-amber-100 transition"
-          >
-            <AlertCircle size={16} />
-            Cập nhật hết hạn
-          </button>
+          
         </div>
 
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
@@ -160,7 +114,7 @@ function Subscriptions() {
                   <tr key={sub.id} className="border-b border-gray-50 hover:bg-amber-50/20 transition">
                     <td className="px-5 py-3.5 font-mono text-sm text-gray-900">{sub.id}</td>
                     <td className="px-5 py-3.5">
-                      <p className="font-semibold text-gray-800">{sub.userName || sub.userFullName || "—"}</p>
+                      <p className="font-semibold text-gray-900">{sub.userName || sub.userFullName || "—"}</p>
                     </td>
                     <td className="px-5 py-3.5">
                       <span className="px-2.5 py-1 bg-teal-50 text-teal-600 rounded-full text-xs font-semibold">
@@ -204,7 +158,7 @@ function Subscriptions() {
         <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50 p-4 backdrop-blur-sm">
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl modal-enter">
             <div className="flex items-center justify-between p-6 border-b border-gray-100">
-              <h2 className="text-lg font-bold text-gray-800">Chi tiết đăng ký #{detail.id}</h2>
+              <h2 className="text-lg font-bold text-gray-800">Chi tiết đăng ký -  {detail.id}</h2>
               <button onClick={() => setDetail(null)} className="p-2 hover:bg-gray-100 rounded-lg transition"><X size={18} /></button>
             </div>
             <div className="p-6 grid grid-cols-2 gap-4 text-sm">
@@ -222,7 +176,7 @@ function Subscriptions() {
               ].filter(([, v]) => v !== undefined && v !== null).map(([label, val]) => (
                 <div key={label}>
                   <p className="text-xs font-semibold text-gray-400 uppercase mb-0.5">{label}</p>
-                  <p className="text-gray-800 font-medium">{val}</p>
+                  <p className="text-gray-900 font-medium">{val}</p>
                 </div>
               ))}
               <div className="col-span-2">

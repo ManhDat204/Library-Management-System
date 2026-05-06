@@ -1,75 +1,13 @@
 import { useState, useEffect } from "react";
-import { Edit2, Trash2, Search, Eye, X, Users as UsersIcon, Loader2, AlertCircle, CheckCircle, ShieldCheck, ShieldOff, User } from "lucide-react";
-import axios from "axios";
+import { Edit2, Trash2, Search, Eye, X, Users as UsersIcon, Loader2, AlertCircle, CheckCircle, ShieldCheck, ShieldOff, User, Plus } from "lucide-react";
 
-// ── Toast ─────────────────────────────────────────────────────────────────────
-function Toast({ message, type, onClose }) {
-  useEffect(() => {
-    const t = setTimeout(onClose, 3000);
-    return () => clearTimeout(t);
-  }, [onClose]);
+// Import common components
+import Toast from "../../components/common/Toast";
+import ConfirmDialog from "../../components/common/ConfirmDialog";
+import Field from "../../components/common/Field";
 
-  const colors = {
-    success: "bg-emerald-500",
-    error:   "bg-rose-500",
-    info:    "bg-blue-500",
-  };
-
-  return (
-    <div
-      className={`fixed top-5 right-5 z-[9999] flex items-center gap-3 px-5 py-3 rounded-xl text-white shadow-2xl text-sm font-medium ${colors[type] || colors.info}`}
-      style={{ animation: "slideIn 0.3s ease" }}
-    >
-      {type === "success" && <CheckCircle size={18} />}
-      {type === "error"   && <AlertCircle  size={18} />}
-      {message}
-      <button onClick={onClose} className="ml-2 opacity-70 hover:opacity-100"><X size={14} /></button>
-    </div>
-  );
-}
-
-// ── Confirm Dialog ────────────────────────────────────────────────────────────
-function ConfirmDialog({ message, onConfirm, onCancel }) {
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[999] backdrop-blur-sm">
-      <div className="bg-white rounded-2xl p-6 w-96 shadow-2xl" style={{ animation: "fadeUp 0.25s ease" }}>
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 bg-rose-100 rounded-full flex items-center justify-center">
-            <AlertCircle size={20} className="text-rose-500" />
-          </div>
-          <h3 className="text-base font-semibold text-gray-800">Xác nhận xóa</h3>
-        </div>
-        <p className="text-sm text-gray-600 mb-6">{message}</p>
-        <div className="flex gap-3 justify-end">
-          <button onClick={onCancel}  className="px-4 py-2 text-sm rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition">Hủy</button>
-          <button onClick={onConfirm} className="px-4 py-2 text-sm rounded-lg bg-rose-500 text-white hover:bg-rose-600 transition font-semibold">Xóa</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Field ─────────────────────────────────────────────────────────────────────
-function Field({ label, error, children }) {
-  return (
-    <div className="flex flex-col gap-1">
-      {label && <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{label}</label>}
-      {children}
-      {error && <span className="text-xs text-rose-500 flex items-center gap-1"><AlertCircle size={11} />{error}</span>}
-    </div>
-  );
-}
-
-// ── Avatar ────────────────────────────────────────────────────────────────────
-function Avatar({ name }) {
-  const colors = ["bg-blue-400","bg-violet-400","bg-emerald-400","bg-amber-400","bg-rose-400","bg-cyan-400"];
-  const idx = name ? name.charCodeAt(0) % colors.length : 0;
-  return (
-    <div className={`w-9 h-9 rounded-full ${colors[idx]} flex items-center justify-center text-white font-bold text-sm flex-shrink-0`}>
-      {name ? name.charAt(0).toUpperCase() : "?"}
-    </div>
-  );
-}
+// Import services
+import { userService } from "../../services/userService";
 
 const EMPTY_EDIT = { fullName: "", email: "", password: "", role: "ROLE_USER", active: true };
 
@@ -93,16 +31,13 @@ function Users() {
   useEffect(() => { fetchUsers(); }, []);
 
   const showToast = (msg, type = "info") => setToast({ message: msg, type });
-  const getToken  = () => localStorage.getItem("token");
 
 
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const res = await axios.get("http://localhost:8080/api/users/list", {
-        headers: { Authorization: `Bearer ${getToken()}` },
-      });
-      setUsers(res.data || []);
+      const res = await userService.getAllUsers();
+      setUsers(res.data || res || []);
     } catch {
       showToast("Không thể tải danh sách người dùng", "error");
     } finally {
@@ -148,14 +83,11 @@ function Users() {
       const payload = { ...formData };
       if (!payload.password) delete payload.password;
 
-      const url = editingId
-        ? `http://localhost:8080/api/users/admin/${editingId}`
-        : `http://localhost:8080/api/users/admin`;
-      const method = editingId ? "put" : "post";
-
-      await axios[method](url, payload, {
-        headers: { Authorization: `Bearer ${getToken()}` },
-      });
+      if (editingId) {
+        await userService.updateUser(editingId, payload);
+      } else {
+        await userService.createUser(payload);
+      }
       showToast(editingId ? "Cập nhật người dùng thành công!" : "Thêm người dùng thành công!", "success");
       await fetchUsers();
       closeForm();
@@ -169,9 +101,7 @@ function Users() {
   const handleDeleteConfirm = async () => {
     if (!confirm) return;
     try {
-      await axios.delete(`http://localhost:8080/api/users/admin/${confirm.id}`, {
-        headers: { Authorization: `Bearer ${getToken()}` },
-      });
+      await userService.deleteUser(confirm.id);
       showToast(`Đã xóa người dùng "${confirm.name}"`, "success");
       await fetchUsers();
     } catch {
@@ -214,106 +144,110 @@ function Users() {
       {toast   && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       {confirm && (
         <ConfirmDialog
+          title="Xác nhận xóa"
           message={`Bạn có chắc muốn xóa người dùng "${confirm.name}"?.`}
+          confirmLabel="Xóa"
+          confirmClass="bg-rose-500 hover:bg-rose-600"
           onConfirm={handleDeleteConfirm}
           onCancel={() => setConfirm(null)}
         />
       )}
 
-      <div className="p-6 w-full">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-3xl font-bold text-gray-800">Quản Lý Người Dùng</h2>
+      <div className="p-4 md:p-6 w-full">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 md:mb-6">
+          <h2 className="text-2xl md:text-3xl font-bold text-gray-800">Quản lý tài khoản</h2>
           <button
             onClick={() => { setEditingId(null); setFormData(EMPTY_EDIT); setShowForm(true); }}
-            className="px-4 py-2.5 bg-blue-500 text-white rounded-xl text-sm font-semibold hover:bg-blue-600 transition"
+            className="flex items-center justify-center sm:justify-start gap-2 px-4 md:px-6 py-2 md:py-2.5 bg-blue-500 text-white rounded-xl text-xs md:text-sm font-semibold hover:bg-blue-600 transition w-full sm:w-auto"
           >
+            <Plus size={16} />
             Thêm tài khoản
           </button>
         </div>
-        <div className="mb-5 relative">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+        <div className="mb-4 md:mb-5 relative">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" size={16} />
           <input
             type="text"
             placeholder="Tìm kiếm theo tên, email..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full pl-11 pr-10 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-gray-50"
+            className="w-full pl-10 pr-10 py-2 md:py-2.5 border border-gray-200 rounded-xl text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-gray-50"
           />
           {search && (
             <button onClick={() => setSearch("")} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-              <X size={16} />
+              <X size={14} />
             </button>
           )}
         </div>
 
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-base">
+            <table className="w-full text-xs md:text-sm" style={{ minWidth: "900px" }}>
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-100">
                   {["ID ", "Tên", "Email", "Số điện thoại","Giới tính", "Vai Trò", "Trạng Thái", "Hành Động"].map(h => (
-                    <th key={h} className="px-5 py-3.5 text-left text-sm font-semibold text-gray-900 uppercase tracking-wide">{h}</th>
+                    <th key={h} className="px-3 md:px-5 py-2 md:py-3.5 text-left font-semibold text-gray-900 uppercase tracking-wide whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={7} className="text-center py-16 text-gray-400">
-                      <Loader2 size={28} className="animate-spin mx-auto mb-2" />
-                      <p className="text-sm">Đang tải dữ liệu...</p>
+                    <td colSpan={8} className="text-center py-12 md:py-16 text-gray-400">
+                      <Loader2 size={24} className="animate-spin mx-auto mb-2" />
+                      <p className="text-xs md:text-sm">Đang tải dữ liệu...</p>
                     </td>
                   </tr>
                 ) : filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="text-center py-16 text-gray-400">
-                      <User size={32} className="mx-auto mb-2 opacity-30" />
-                      <p className="text-sm">Chưa có người dùng nào</p>
+                    <td colSpan={8} className="text-center py-12 md:py-16 text-gray-400">
+                      <User size={28} className="mx-auto mb-2 opacity-30" />
+                      <p className="text-xs md:text-sm">Chưa có người dùng nào</p>
                     </td>
                   </tr>
                 ) : (
                   filtered.map(user => (
                     <tr key={user.id} className="border-b border-gray-50 hover:bg-indigo-50/30 transition">
-                      <td className="px-5 py-3.5 text-gray-900">{user.id}</td>
-                      <td className="px-5 py-3.5">
-                        <div className="flex items-center gap-3">
-                          
-                          <span className="font-semibold text-gray-800">{user.fullName}</span>
+                      <td className="px-3 md:px-5 py-2 md:py-3.5 text-gray-900 text-xs md:text-sm font-medium">{user.id}</td>
+                      <td className="px-3 md:px-5 py-2 md:py-3.5">
+                        <div className="flex items-center gap-2 md:gap-3">
+                          <span className="font-semibold text-gray-800 line-clamp-1 text-xs md:text-sm">{user.fullName}</span>
                         </div>
                       </td>
 
-                      <td className="px-5 py-3.5 text-gray-900">{user.email}</td>
-                      <td className="px-5 py-3.5 text-gray-900">{user.phone}</td>
-                      <td className="px-5 py-3.5 text-gray-900">
+                      <td className="px-3 md:px-5 py-2 md:py-3.5 text-gray-900 text-xs md:text-sm hidden sm:table-cell">{user.email}</td>
+                      <td className="px-3 md:px-5 py-2 md:py-3.5 text-gray-900 text-xs md:text-sm hidden md:table-cell">{user.phone}</td>
+                      <td className="px-3 md:px-5 py-2 md:py-3.5 text-gray-900 text-xs md:text-sm hidden lg:table-cell">
                       {user.gender === "MALE" ? "Nam" : user.gender === "FEMALE" ? "Nữ" : ""}
                     </td>
 
-                      <td className="px-5 py-3.5">
-                        <span className={`text-sm ${roleBadge(user.role)}`}>
+                      <td className="px-3 md:px-5 py-2 md:py-3.5">
+                        <span className={`text-xs md:text-sm inline-block ${roleBadge(user.role)}`}>
                           {getRoleLabel(user.role)}
                         </span>
                       </td>
 
-                      <td className="px-5 py-3.5">
-                        <div className="w-3 h-3 rounded-full" title={user.active ? "Hoạt động" : "Bị khóa"} style={{ backgroundColor: user.active !== false ? "#10b981" : "#6b7280" }}></div>
+                      <td className="px-3 md:px-5 py-2 md:py-3.5">
+                        <span className={`inline-flex items-center px-2 md:px-2.5 py-0.5 md:py-1 rounded-full text-xs font-semibold ${user.active !== false ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500"}`}>
+                          {user.active !== false ? "Hoạt động" : "Dừng"}
+                        </span>
                       </td>
 
-                      <td className="px-5 py-3.5">
-                        <div className="flex gap-1.5">
-
+                      <td className="px-3 md:px-5 py-2 md:py-3.5">
+                        <div className="flex gap-1">
                           <button
                             onClick={() => handleEdit(user)}
                             title="Chỉnh sửa"
-                            className="p-2 text-gray-900 hover:text-blue-600 transition"
+                            className="p-1.5 md:p-2 text-gray-900 hover:text-blue-600 transition flex-shrink-0"
                           >
-                            <Edit2 size={15} />
+                            <Edit2 size={14} className="md:w-4 md:h-4" />
                           </button>
                           <button
                             onClick={() => setConfirm({ id: user.id, name: user.fullName })}
                             title="Xóa"
-                            className="p-2 text-gray-900 hover:text-rose-500 transition"
+                            className="p-1.5 md:p-2 text-gray-900 hover:text-rose-500 transition flex-shrink-0"
                           >
-                            <Trash2 size={15} />
+                            <Trash2 size={14} className="md:w-4 md:h-4" />
                           </button>
                         </div>
                       </td>
@@ -325,7 +259,7 @@ function Users() {
           </div>
 
           {!loading && filtered.length > 0 && (
-            <div className="px-5 py-3 border-t border-gray-50 bg-gray-50/50">
+            <div className="px-4 md:px-5 py-2 md:py-3 border-t border-gray-50 bg-gray-50/50 text-xs text-gray-400">
             
             </div>
           )}
@@ -333,15 +267,15 @@ function Users() {
       </div>
 
       {showDetail && selectedUser && (
-        <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50 p-4 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl modal-enter">
-            <div className="flex items-center justify-between p-6 border-b border-gray-100">
-              <h2 className="text-lg font-bold text-gray-800">Chi tiết người dùng</h2>
-              <button onClick={() => setShowDetail(false)} className="p-2 hover:bg-gray-100 rounded-lg transition"><X size={18} /></button>
+        <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50 p-3 md:p-4 backdrop-blur-sm overflow-y-auto">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl modal-enter my-4">
+            <div className="flex items-center justify-between p-4 md:p-6 border-b border-gray-100">
+              <h2 className="text-lg md:text-xl font-bold text-gray-800">Chi tiết người dùng</h2>
+              <button onClick={() => setShowDetail(false)} className="p-1.5 md:p-2 hover:bg-gray-100 rounded-lg transition flex-shrink-0"><X size={18} /></button>
             </div>
-            <div className="p-6">
+            <div className="p-4 md:p-6">
               <div className="flex items-center gap-4 mb-6">
-                <div className="w-16 h-16 rounded-2xl bg-indigo-100 flex items-center justify-center">
+                <div className="w-14 md:w-16 h-14 md:h-16 rounded-2xl bg-indigo-100 flex items-center justify-center flex-shrink-0">
                   <span className="text-2xl font-bold text-indigo-500">
                     {selectedUser.fullName?.charAt(0).toUpperCase()}
                   </span>

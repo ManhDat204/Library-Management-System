@@ -1,48 +1,10 @@
 import { useState, useEffect } from "react";
 import { Plus, Edit2, Trash2, Search, X, CreditCard, Loader2, AlertCircle, CheckCircle } from "lucide-react";
-import axios from "axios";
 
-function Toast({ message, type, onClose }) {
-  useEffect(() => { const t = setTimeout(onClose, 3000); return () => clearTimeout(t); }, [onClose]);
-  const colors = { success: "bg-emerald-500", error: "bg-rose-500", info: "bg-blue-500" };
-  return (
-    <div className={`fixed top-5 right-5 z-[9999] flex items-center gap-3 px-5 py-3 rounded-xl text-white shadow-2xl text-sm font-medium ${colors[type] || colors.info}`}
-      style={{ animation: "slideIn 0.3s ease" }}>
-      {type === "success" && <CheckCircle size={18} />}
-      {type === "error"   && <AlertCircle  size={18} />}
-      {message}
-      <button onClick={onClose} className="ml-2 opacity-70 hover:opacity-100"><X size={14} /></button>
-    </div>
-  );
-}
-
-function ConfirmDialog({ message, onConfirm, onCancel }) {
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[999] backdrop-blur-sm">
-      <div className="bg-white rounded-2xl p-6 w-96 shadow-2xl" style={{ animation: "fadeUp 0.25s ease" }}>
-        <div className="flex items-center gap-3 mb-3">
-          <div className="w-10 h-10 bg-rose-100 rounded-full flex items-center justify-center"><AlertCircle size={20} className="text-rose-500" /></div>
-          <h3 className="text-base font-semibold text-gray-800">Xác nhận xóa</h3>
-        </div>
-        <p className="text-sm text-gray-500 mb-6 pl-[52px]">{message}</p>
-        <div className="flex gap-2.5 justify-end">
-          <button onClick={onCancel}  className="px-4 py-2 text-sm rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 transition">Hủy</button>
-          <button onClick={onConfirm} className="px-4 py-2 text-sm rounded-xl bg-rose-500 text-white hover:bg-rose-600 transition font-semibold">Xóa</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Field({ label, error, children }) {
-  return (
-    <div className="flex flex-col gap-1">
-      {label && <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{label}</label>}
-      {children}
-      {error && <span className="text-xs text-rose-500 flex items-center gap-1"><AlertCircle size={11} />{error}</span>}
-    </div>
-  );
-}
+import Toast from "../../components/common/Toast";
+import ConfirmDialog from "../../components/common/ConfirmDialog";
+import Field from "../../components/common/Field";
+import { subscriptionPlanService } from "../../services/subscriptionPlanService";
 
 const EMPTY = {
   planCode: "", name: "", description: "",
@@ -65,20 +27,16 @@ function SubscriptionPlans() {
   const [toast, setToast]         = useState(null);
 
   const showToast = (msg, type = "info") => setToast({ message: msg, type });
-  const getToken  = () => localStorage.getItem("token");
-  const auth      = () => ({ Authorization: `Bearer ${getToken()}` });
 
   useEffect(() => { fetchPlans(); }, []);
 
   const fetchPlans = async () => {
     setLoading(true);
     try {
-      const res = await axios.get("http://localhost:8080/api/subscription-plans", { headers: auth() });
-      console.log("📦 subscription-plans response:", res.data);
-      const data = Array.isArray(res.data) ? res.data : (res.data?.content || []);
+      const res = await subscriptionPlanService.getAllPlans();
+      const data = Array.isArray(res.data) ? res.data : (res.data?.content || res || []);
       setPlans(data);
     } catch (err) {
-      console.error("❌ fetchPlans error:", err);
       showToast("Không thể tải danh sách gói", "error");
     }
     finally { setLoading(false); }
@@ -114,10 +72,10 @@ function SubscriptionPlans() {
         displayOrder: formData.displayOrder ? Number(formData.displayOrder) : null,
       };
       if (editingId) {
-        await axios.put(`http://localhost:8080/api/subscription-plans/admin/${editingId}`, payload, { headers: auth() });
+        await subscriptionPlanService.updatePlan(editingId, payload);
         showToast("Cập nhật gói thành công!", "success");
       } else {
-        await axios.post("http://localhost:8080/api/subscription-plans/admin/create", payload, { headers: auth() });
+        await subscriptionPlanService.createPlan(payload);
         showToast("Tạo gói thành công!", "success");
       }
       await fetchPlans();
@@ -129,7 +87,7 @@ function SubscriptionPlans() {
   const handleDelete = async () => {
     if (!confirm) return;
     try {
-      await axios.delete(`http://localhost:8080/api/subscription-plans/admin/${confirm.id}`, { headers: auth() });
+      await subscriptionPlanService.deletePlan(confirm.id);
       showToast(`Đã xóa gói "${confirm.name}"`, "success");
       await fetchPlans();
     } catch { showToast("Xóa thất bại", "error"); }
@@ -172,13 +130,13 @@ function SubscriptionPlans() {
       `}</style>
 
       {toast   && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-      {confirm && <ConfirmDialog message={`Bạn có chắc muốn xóa gói "${confirm.name}"?`} onConfirm={handleDelete} onCancel={() => setConfirm(null)} />}
+      {confirm && <ConfirmDialog title="Xác nhận xóa" message={`Bạn có chắc muốn xóa gói "${confirm.name}"?`} confirmLabel="Xóa" confirmClass="bg-rose-500 hover:bg-rose-600" onConfirm={handleDelete} onCancel={() => setConfirm(null)} />}
 
       <div className="p-6 w-full">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <div>
-              <h2 className="text-3xl font-bold text-gray-800">Gói Đăng Ký</h2>
+              <h2 className="text-3xl font-bold text-gray-900">Gói Đăng Ký</h2>
 
             </div>
           </div>
@@ -216,9 +174,9 @@ function SubscriptionPlans() {
               ) : filtered.map(plan => (
                 <tr key={plan.id} className="border-b border-gray-50 hover:bg-teal-50/30 transition">
                   <td className="px-5 py-3.5 text-gray-900 font-mono">{plan.id}</td>
-                  <td className="px-5 py-3.5 font-semibold text-gray-800">{plan.name}</td>
+                  <td className="px-5 py-3.5 font-semibold text-gray-900">{plan.name}</td>
                   <td className="px-5 py-3.5 text-gray-900 max-w-[200px]"><span className="line-clamp-2">{plan.description || "—"}</span></td>
-                  <td className="px-5 py-3.5 font-semibold text-gray-800">{Number(plan.price).toLocaleString()}</td>
+                  <td className="px-5 py-3.5 font-semibold text-gray-900">{Number(plan.price).toLocaleString()}</td>
                   <td className="px-5 py-3.5">
                     <span className="px-2.5 py-1 bg-blue-50 text-blue-600 rounded-full text-xs font-semibold">{plan.durationDays} ngày</span>
                   </td>
@@ -257,7 +215,7 @@ function SubscriptionPlans() {
                 <div className="w-9 h-9 bg-teal-100 rounded-xl flex items-center justify-center">
                   <CreditCard size={17} className="text-teal-600" />
                 </div>
-                <h2 className="text-lg font-bold text-gray-800">{editingId ? "Chỉnh sửa gói" : "Thêm gói mới"}</h2>
+                <h2 className="text-lg font-bold text-gray-900">{editingId ? "Chỉnh sửa gói" : "Thêm gói mới"}</h2>
               </div>
               <button onClick={closeForm} className="p-2 hover:bg-gray-100 rounded-lg transition"><X size={18} /></button>
             </div>

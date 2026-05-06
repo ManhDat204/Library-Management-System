@@ -1,89 +1,14 @@
 import { useState, useEffect, useRef } from "react";
-import { Plus, Edit2, Trash2, Search, X, User, Loader2, AlertCircle, CheckCircle, Globe } from "lucide-react";
-import axios from "axios";
+import { Plus, Edit2, Trash2, Search, X, User, Loader2 } from "lucide-react";
 
-function Toast({ message, type, onClose }) {
-  useEffect(() => {
-    const t = setTimeout(onClose, 3000);
-    return () => clearTimeout(t);
-  }, [onClose]);
-  const cfg = {
-    success: { bg: "bg-emerald-500", icon: <CheckCircle size={16} /> },
-    error:   { bg: "bg-rose-500",    icon: <AlertCircle  size={16} /> },
-    info:    { bg: "bg-blue-500",    icon: null },
-  };
-  const { bg, icon } = cfg[type] || cfg.info;
-  return (
-    <div className={`fixed top-5 right-5 z-[9999] flex items-center gap-2.5 px-4 py-3 rounded-xl text-white shadow-2xl text-sm font-medium ${bg}`}
-      style={{ animation: "slideIn 0.3s ease" }}>
-      {icon}
-      {message}
-      <button onClick={onClose} className="ml-2 opacity-70 hover:opacity-100"><X size={13} /></button>
-    </div>
-  );
-}
+// Import common components
+import Toast from "../../components/common/Toast";
+import ConfirmDialog from "../../components/common/ConfirmDialog";
+import Field from "../../components/common/Field";
+import Pagination from "../../components/common/Pagination";
 
-function ConfirmDialog({ name, onConfirm, onCancel }) {
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[999] backdrop-blur-sm">
-      <div className="bg-white rounded-2xl p-6 w-[380px] shadow-2xl" style={{ animation: "fadeUp 0.25s ease" }}>
-        <div className="flex items-center gap-3 mb-3">
-          <div className="w-10 h-10 bg-rose-100 rounded-full flex items-center justify-center flex-shrink-0">
-            <AlertCircle size={20} className="text-rose-500" />
-          </div>
-          <h3 className="text-base font-semibold text-gray-800">Xác nhận xóa</h3>
-        </div>
-        <p className="text-sm text-gray-500 mb-6 pl-[52px]">
-          Bạn có chắc muốn xóa tác giả <span className="font-semibold text-gray-700">"{name}"</span>?
-        </p>
-        <div className="flex gap-2.5 justify-end">
-          <button onClick={onCancel} className="px-4 py-2 text-sm rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 transition">Hủy</button>
-          <button onClick={onConfirm} className="px-4 py-2 text-sm rounded-xl bg-rose-500 text-white hover:bg-rose-600 transition font-semibold">Xóa</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Pagination({ page, totalPages, onChange }) {
-  if (totalPages <= 1) return null;
-  const pages = [];
-  const delta = 2;
-  for (let i = 0; i < totalPages; i++) {
-    if (i === 0 || i === totalPages - 1 || (i >= page - delta && i <= page + delta)) {
-      pages.push(i);
-    } else if (pages[pages.length - 1] !== "...") {
-      pages.push("...");
-    }
-  }
-  const btnBase = {
-    border: "1px solid rgba(0,0,0,0.1)", borderRadius: 10,
-    padding: "7px 14px", cursor: "pointer", fontSize: "0.83rem",
-    transition: "all 0.18s", background: "#fff", color: "#555",
-  };
-  return (
-    <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 6, marginTop: "2rem" }}>
-      <button style={{ ...btnBase, opacity: page === 0 ? 0.35 : 1 }}
-        disabled={page === 0} onClick={() => onChange(page - 1)}>← Trước</button>
-      {pages.map((p, i) =>
-        p === "..." ? (
-          <span key={`e${i}`} style={{ color: "#aaa", padding: "0 4px", fontSize: "0.85rem" }}>…</span>
-        ) : (
-          <button key={p} onClick={() => onChange(p)} style={{
-            ...btnBase,
-            background: p === page ? "#1a1a1a" : "#fff",
-            color: p === page ? "#f5f0e8" : "#555",
-            border: p === page ? "1px solid #1a1a1a" : "1px solid rgba(0,0,0,0.1)",
-            fontWeight: p === page ? 700 : 400,
-            minWidth: 36, padding: "7px 10px", textAlign: "center",
-          }}>{p + 1}</button>
-        )
-      )}
-      <button style={{ ...btnBase, opacity: page >= totalPages - 1 ? 0.35 : 1 }}
-        disabled={page >= totalPages - 1} onClick={() => onChange(page + 1)}>Tiếp →</button>
-    </div>
-  );
-}
+// Import services
+import { authorService } from "../../services/authorService";
 
 const EMPTY = { authorName: "", nationality: "", biography: "" };
 
@@ -115,34 +40,26 @@ function Authors() {
 
   useEffect(() => { fetchAuthors(); }, [page, debouncedSearch]);
 
-  const showToast  = (message, type = "info") => setToast({ message, type });
-  const getToken   = () => localStorage.getItem("token");
-  const authHeader = () => ({ Authorization: `Bearer ${getToken()}` });
+  const showToast = (message, type = "info") => setToast({ message, type });
 
   const fetchAuthors = async () => {
-  setLoading(true);
-  try {
-    const res = await axios.get("http://localhost:8080/api/authors", {
-      params: {
+    setLoading(true);
+    try {
+      const res = await authorService.searchAuthors({
         searchTerm: debouncedSearch.trim() || undefined,
         page,
         size: 10,
         sortBy: "id",
         sortDirection: "ASC"
-      },
-      headers: authHeader()
-    });
-
-   
-
-    setAuthors(res.data.content || []);
-    setTotalPages(res.data.totalPage || 0);
-  } catch {
-    showToast("Không thể tải danh sách tác giả", "error");
-  } finally {
-    setLoading(false);
-  }
-};
+      });
+      setAuthors(res.data.content || []);
+      setTotalPages(res.data.totalPage || 0);
+    } catch {
+      showToast("Không thể tải danh sách tác giả", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handlePageChange = (p) => {
     setPage(p);
@@ -171,10 +88,10 @@ function Authors() {
     };
     try {
       if (editing) {
-        await axios.put(`http://localhost:8080/api/authors/${currentId}`, payload, { headers: authHeader() });
+        await authorService.updateAuthor(currentId, payload);
         showToast("Cập nhật tác giả thành công!", "success");
       } else {
-        await axios.post("http://localhost:8080/api/authors/create", payload, { headers: authHeader() });
+        await authorService.createAuthor(payload);
         showToast("Thêm tác giả thành công!", "success");
       }
       await fetchAuthors();
@@ -189,8 +106,8 @@ function Authors() {
   const handleDeleteConfirm = async () => {
     if (!confirm) return;
     try {
-      await axios.delete(`http://localhost:8080/api/authors/${confirm.id}`, { headers: authHeader() });
-      showToast(`Đã xóa tác giả "${confirm.name}"`, "thành công");
+      await authorService.softDeleteAuthor(confirm.id);
+      showToast(`Đã xóa tác giả "${confirm.name}"`, "success");
       await fetchAuthors();
     } catch {
       showToast("Xóa thất bại", "error");
@@ -235,86 +152,97 @@ function Authors() {
         @keyframes fadeUp  { from { transform: translateY(16px); opacity:0 } to { transform: translateY(0); opacity:1 } }
       `}</style>
 
-      {toast   && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-      {confirm && <ConfirmDialog name={confirm.name} onConfirm={handleDeleteConfirm} onCancel={() => setConfirm(null)} />}
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      {confirm && (
+        <ConfirmDialog
+          title="Xác nhận xóa"
+          message={`Bạn có chắc muốn xóa tác giả "${confirm.name}"?`}
+          confirmLabel="Xóa"
+          confirmClass="bg-rose-500 hover:bg-rose-600"
+          onConfirm={handleDeleteConfirm}
+          onCancel={() => setConfirm(null)}
+        />
+      )}
 
-      <div className="p-6 w-full">
+      <div className="p-4 md:p-6 w-full">
 
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 md:mb-6">
           <div className="flex items-center gap-3">
-            <h2 className="text-3xl font-bold text-gray-800">Quản Lý Tác Giả</h2>
+            <h2 className="text-2xl md:text-3xl font-bold text-gray-800">Quản lý tác giả</h2>
           </div>
           <button onClick={openAdd}
-            className="flex items-center gap-2 px-4 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-sm font-semibold transition shadow-md shadow-blue-200">
+            className="flex items-center justify-center sm:justify-start gap-2 px-4 md:px-6 py-2 md:py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-xs md:text-sm font-semibold transition shadow-md shadow-blue-200 w-full sm:w-auto">
+             <Plus size={16} />
              Thêm Tác Giả
           </button>
         </div>
 
-        <div className="mb-5 relative">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={17} />
+        <div className="mb-4 md:mb-5 relative">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" size={16} />
           <input type="text" placeholder="Tìm theo tên tác giả, quốc tịch..."
             value={search} onChange={e => setSearch(e.target.value)}
-            className="w-full pl-10 pr-9 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-300 bg-gray-50" />
+            className="w-full pl-10 pr-9 py-2 md:py-2.5 border border-gray-200 rounded-xl text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-amber-300 bg-gray-50" />
           {search && (
             <button onClick={() => setSearch("")} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-              <X size={15} />
+              <X size={14} />
             </button>
           )}
         </div>
 
         {/* Table */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full text-xs md:text-sm" style={{ minWidth: "600px" }}>
             <thead>
               <tr className="bg-gray-50 border-b border-gray-100">
                 {["ID", "Tên tác giả", "Quốc tịch", "Tiểu sử", "Hành động"].map(h => (
-                  <th key={h} className="px-5 py-3.5 text-left text-xs font-semibold text-gray-900 uppercase tracking-wide">{h}</th>
+                  <th key={h} className="px-3 md:px-5 py-2 md:py-3.5 text-left font-semibold text-gray-900 uppercase tracking-wide whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="text-center py-16 text-gray-400">
-                    <Loader2 size={26} className="animate-spin mx-auto mb-2" />
-                    <p className="text-sm">Đang tải...</p>
+                  <td colSpan={5} className="text-center py-12 md:py-16 text-gray-400">
+                    <Loader2 size={20} className="animate-spin mx-auto mb-2" />
+                    <p className="text-xs md:text-sm">Đang tải...</p>
                   </td>
                 </tr>
               ) : authors.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="text-center py-16 text-gray-400">
-                    <User size={28} className="mx-auto mb-2 opacity-30" />
-                    <p className="text-sm">Không tìm thấy tác giả nào</p>
+                  <td colSpan={5} className="text-center py-12 md:py-16 text-gray-400">
+                    <User size={24} className="mx-auto mb-2 opacity-30" />
+                    <p className="text-xs md:text-sm">Không tìm thấy tác giả nào</p>
                   </td>
                 </tr>
               ) : (
                 authors.map((author) => (
                   <tr key={author.id} className="border-b border-gray-50 hover:bg-amber-50/30 transition">
-                    <td className="px-5 py-3.5 text-gray-900 text-sm">{author.id}</td>
-                    <td className="px-5 py-3.5">
-                      <span className="font-semibold text-gray-800">{author.authorName}</span>
+                    <td className="px-3 md:px-5 py-2 md:py-3.5 text-gray-900 text-xs md:text-sm font-medium">{author.id}</td>
+                    <td className="px-3 md:px-5 py-2 md:py-3.5">
+                      <span className="font-semibold text-gray-800 line-clamp-1">{author.authorName}</span>
                     </td>
-                    <td className="px-5 py-3.5 text-gray-900 text-sm">
+                    <td className="px-3 md:px-5 py-2 md:py-3.5 text-gray-900 text-xs md:text-sm hidden sm:table-cell">
                       {author.nationality
                         ? <span className="flex items-center gap-1.5"><div className="text-gray-400" />{author.nationality}</span>
                         : <span className="text-gray-300">—</span>
                       }
                     </td>
-                    <td className="px-5 py-3.5 text-gray-400 text-sm max-w-xs">
+                    <td className="px-3 md:px-5 py-2 md:py-3.5 text-gray-900 text-xs md:text-sm max-w-xs hidden md:table-cell">
                       {author.biography
                         ? <span className="line-clamp-2 leading-relaxed">{author.biography}</span>
                         : <span className="text-gray-300">—</span>
                       }
                     </td>
-                    <td className="px-5 py-3.5">
-                      <div className="flex gap-1.5">
+                    <td className="px-3 md:px-5 py-2 md:py-3.5">
+                      <div className="flex gap-1">
                         <button onClick={() => handleEdit(author)} title="Chỉnh sửa"
-                          className="p-2 bg-blue-50 text-blue-500 rounded-lg hover:bg-blue-100 transition">
-                          <Edit2 size={15} />
+                          className="p-1.5 md:p-2 bg-blue-50 text-blue-500 rounded-lg hover:bg-blue-100 transition flex-shrink-0">
+                          <Edit2 size={13} className="md:w-3.75 md:h-3.75" />
                         </button>
                         <button onClick={() => setConfirm({ id: author.id, name: author.authorName })} title="Xóa"
-                          className="p-2 bg-rose-50 text-rose-500 rounded-lg hover:bg-rose-100 transition">
-                          <Trash2 size={15} />
+                          className="p-1.5 md:p-2 bg-rose-50 text-rose-500 rounded-lg hover:bg-rose-100 transition flex-shrink-0">
+                          <Trash2 size={13} className="md:w-3.75 md:h-3.75" />
                         </button>
                       </div>
                     </td>
@@ -323,9 +251,10 @@ function Authors() {
               )}
             </tbody>
          </table>
+          </div>
 
         {!loading && authors.length > 0 && (
-          <div className="px-5 py-3 border-t border-gray-50 bg-gray-50/50 text-xs text-gray-400">
+          <div className="px-4 md:px-5 py-2 md:py-3 border-t border-gray-50 bg-gray-50/50 text-xs text-gray-400">
             Trang {page + 1} / {totalPages}
           </div>
         )}

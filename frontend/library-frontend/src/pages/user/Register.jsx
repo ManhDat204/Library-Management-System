@@ -2,124 +2,151 @@ import { useState } from "react";
 import axios from "axios";
 import { useNavigate, Link } from "react-router-dom";
 
+const REGISTER_IMAGE_URL = "YOUR_IMAGE_URL";
+
 const Register = () => {
   const navigate = useNavigate();
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-
-    // Validate
     if (!email || !password || !confirmPassword) {
       setError("Vui lòng nhập đầy đủ thông tin");
       return;
     }
-
     if (password.length < 6) {
       setError("Mật khẩu phải có ít nhất 6 ký tự");
       return;
     }
-
     if (password !== confirmPassword) {
       setError("Mật khẩu xác nhận không khớp");
       return;
     }
-
     try {
-        await axios.post("http://localhost:8080/auth/signup", {
-        email,
-        password,
-      });
-
+      await axios.post("http://localhost:8080/auth/signup", { email, password });
       alert("Đăng ký thành công!");
       navigate("/login");
-
-    } catch (err) {
+    } catch {
       setError("Email đã tồn tại hoặc có lỗi xảy ra");
     }
   };
 
   return (
-    <div className="h-screen flex justify-center items-center bg-gray-100">
-      <div className="bg-white w-96 p-8 rounded shadow">
+    <div className="flex min-h-screen bg-[#f5f5f0] font-[DM_Sans,sans-serif]">
 
-        <h2 className="text-2xl font-bold text-center mb-2">
-          Tạo tài khoản
-        </h2>
-        <p className="text-center text-gray-500 mb-6">
-          Đăng ký để sử dụng hệ thống
-        </p>
+      {/* ── Left 50%: Form ── */}
+      <div className="flex-1 flex items-center justify-center bg-[#f5f5f0] px-14 py-12 max-md:px-6">
+        <div className="w-full max-w-[380px]">
 
-        {error && (
-          <div className="bg-red-100 text-red-600 p-2 mb-4 rounded text-sm">
-            {error}
-          </div>
-        )}
+          <h1 className="text-[30px] font-extrabold tracking-[2px] text-[#111] leading-none mb-1.5">
+            Tạo tài khoản
+          </h1>
+          <p className="text-sm text-[#888] mb-7">
+            Đăng ký để sử dụng hệ thống.
+          </p>
 
-        <form onSubmit={handleSubmit}>
-          {/* Email */}
-          <div className="mb-4">
-            <label className="block mb-1 font-medium">Email</label>
-            <input
-              type="email"
-              className="w-full p-2 border rounded"
-              placeholder="example@gmail.com"
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </div>
+          {/* Error banner */}
+          {error && (
+            <div className="mb-[18px] rounded-lg border border-red-300 bg-red-50 px-4 py-2.5 text-[13px] text-red-600">
+              {error}
+            </div>
+          )}
 
-          {/* Password */}
-          <div className="mb-4 relative">
-            <label className="block mb-1 font-medium">Mật khẩu</label>
-            <input
-              type={showPassword ? "text" : "password"}
-              className="w-full p-2 border rounded"
-              placeholder="••••••••"
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </div>
+          <form onSubmit={handleSubmit}>
 
-          {/* Confirm Password */}
-          <div className="mb-2 relative">
-            <label className="block mb-1 font-medium">
-              Xác nhận mật khẩu
-            </label>
-            <input
-              type={showPassword ? "text" : "password"}
-              className="w-full p-2 border rounded"
-              placeholder="••••••••"
-              onChange={(e) => setConfirmPassword(e.target.value)}
-            />
+            {/* Email */}
+            <div className="mb-4">
+              <label className="block text-[12px] font-semibold uppercase tracking-[1px] text-[#444] mb-1.5">
+                Email
+              </label>
+              <div className="relative">
+                <input
+                  type="email"
+                  placeholder="example@gmail.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full px-4 py-3 border border-[#e0e0db] rounded-[10px] bg-white text-sm text-[#111] outline-none transition duration-200 placeholder:text-[#bbb] focus:border-blue-400 focus:ring-[3px] focus:ring-blue-100"
+                />
+              </div>
+            </div>
 
-            <span
-              className="absolute right-3 top-9 cursor-pointer text-sm text-gray-500"
-              onClick={() => setShowPassword(!showPassword)}
+            {/* Mật khẩu */}
+            <div className="mb-4">
+              <label className="block text-[12px] font-semibold uppercase tracking-[1px] text-[#444] mb-1.5">
+                Mật khẩu
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full px-4 py-3 pr-16 border border-[#e0e0db] rounded-[10px] bg-white text-sm text-[#111] outline-none transition duration-200 placeholder:text-[#bbb] focus:border-blue-400 focus:ring-[3px] focus:ring-blue-100"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-[12px] font-medium text-[#999] hover:text-blue-500 transition-colors"
+                >
+                  {showPassword ? "Hide" : "Show"}
+                </button>
+              </div>
+            </div>
+
+            {/* Xác nhận mật khẩu */}
+            <div className="mb-4">
+              <label className="block text-[12px] font-semibold uppercase tracking-[1px] text-[#444] mb-1.5">
+                Xác nhận mật khẩu
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full px-4 py-3 border border-[#e0e0db] rounded-[10px] bg-white text-sm text-[#111] outline-none transition duration-200 placeholder:text-[#bbb] focus:border-blue-400 focus:ring-[3px] focus:ring-blue-100"
+                />
+              </div>
+            </div>
+
+            {/* Submit */}
+            <button
+              type="submit"
+              className="mt-2 w-full py-3.5 bg-blue-500 hover:bg-blue-600 text-white rounded-[10px] text-[18px] font-extrabold tracking-[2px] transition duration-200 hover:-translate-y-px active:scale-[0.98]"
             >
-              {showPassword ? "Ẩn" : "Hiện"}
-            </span>
-          </div>
+              Sign up
+            </button>
+          </form>
 
-          <button className="w-full bg-green-500 text-white p-2 rounded hover:bg-green-600 mt-4">
-            Đăng ký
-          </button>
-        </form>
+          {/* Footer */}
+          <p className="text-center mt-6 text-[13px] text-[#888]">
+            Already have an account?{" "}
+            <Link to="/login" className="text-blue-500 font-semibold hover:underline">
+              Sign in
+            </Link>
+          </p>
 
-        {/* Back to Login */}
-        <p className="text-center text-sm mt-6">
-          Đã có tài khoản?{" "}
-          <Link to="/login" className="text-blue-500 font-medium">
-            Đăng nhập
-          </Link>
-        </p>
-
+        </div>
       </div>
+
+      {/* ── Right 50%: Image ── */}
+      <div className="relative flex-1 overflow-hidden min-h-screen hidden md:block">
+        <img
+          src={REGISTER_IMAGE_URL}
+          alt="Register visual"
+          className="w-full h-full object-cover object-center block"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/5 to-transparent pointer-events-none" />
+        <div className="absolute bottom-11 left-10 right-10 z-10 text-right text-white/80 text-[13px] leading-relaxed">
+          {/* tagline để trống như bản gốc */}
+        </div>
+      </div>
+
     </div>
   );
 };

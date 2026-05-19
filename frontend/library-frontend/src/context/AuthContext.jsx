@@ -8,12 +8,12 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true); 
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const role = localStorage.getItem("role");
-    const username = localStorage.getItem("username");
-    const profileImage = localStorage.getItem("profileImage");
-    const fullName = localStorage.getItem("fullName");
-    const userId = localStorage.getItem("userId"); 
+    const token = sessionStorage.getItem("token");
+    const role = sessionStorage.getItem("role");
+    const username = sessionStorage.getItem("username");
+    const profileImage = sessionStorage.getItem("profileImage");
+    const fullName = sessionStorage.getItem("fullName");
+    const userId = sessionStorage.getItem("userId"); 
 
     if (token && role) {
       setUser({ token, role, username, profileImage, fullName, userId });
@@ -22,26 +22,26 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = (token, role, username, profileImage, fullName, userId) => {
-    localStorage.setItem("token", token);
-    localStorage.setItem("role", role);
-    localStorage.setItem("username", username ?? "");
-    localStorage.setItem("profileImage", profileImage ?? "");
-    localStorage.setItem("fullName", fullName ?? "");
-    localStorage.setItem("userId", userId ?? "");
+    sessionStorage.setItem("token", token);
+    sessionStorage.setItem("role", role);
+    sessionStorage.setItem("username", username ?? "");
+    sessionStorage.setItem("profileImage", profileImage ?? "");
+    sessionStorage.setItem("fullName", fullName ?? "");
+    sessionStorage.setItem("userId", userId ?? "");
     setUser({ token, role, username, profileImage, fullName,userId });
   };
 
   const updateUser = (newData) => {
     setUser((prev) => {
       const updated = { ...prev, ...newData };
-      if (newData.profileImage !== undefined) localStorage.setItem("profileImage", newData.profileImage);
-      if (newData.fullName !== undefined) localStorage.setItem("fullName", newData.fullName);
+      if (newData.profileImage !== undefined) sessionStorage.setItem("profileImage", newData.profileImage);
+      if (newData.fullName !== undefined) sessionStorage.setItem("fullName", newData.fullName);
       return updated;
     });
   };
 
   const logout = () => {
-    localStorage.clear(); 
+    sessionStorage.clear(); 
     setUser(null);
   };
 

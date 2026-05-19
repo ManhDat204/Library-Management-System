@@ -6,6 +6,7 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Configurable;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -34,7 +35,14 @@ public class SecurityConfig {
                         .requestMatchers("/api/admin/**").hasAnyRole("ADMIN", "STAFF")
                         .requestMatchers("/api/books/**").permitAll()
                         .requestMatchers("/api/genres/**").permitAll()
+                        .requestMatchers("/api/publishers/**").permitAll()
+                        .requestMatchers("/api/authors/**").permitAll()
                         .requestMatchers("/api/wishlist/**").hasRole("USER")
+
+                        .requestMatchers(HttpMethod.POST, "/api/users/admin/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/users/admin/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/users/admin/**").hasRole("ADMIN")
+
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().permitAll()
 

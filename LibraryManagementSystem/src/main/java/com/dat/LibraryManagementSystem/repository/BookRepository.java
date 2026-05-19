@@ -60,7 +60,7 @@ public interface BookRepository extends JpaRepository<Book, Long> {
         @Query("SELECT COUNT(bl) FROM BookLoan bl WHERE bl.book.id = :bookId")
         Long countLoansByBookId(@Param("bookId") Long bookId);
 
-        // AI Recommendation methods
+        // gợi ý sách
         @Query("SELECT b FROM Book b WHERE b.genre.id IN :genreIds AND b.id NOT IN :borrowedIds AND b.active = true")
         List<Book> findByGenreIdInAndIdNotIn(@Param("genreIds") List<Long> genreIds,
                         @Param("borrowedIds") java.util.Set<Long> borrowedIds);
@@ -73,5 +73,21 @@ public interface BookRepository extends JpaRepository<Book, Long> {
                         "LEFT JOIN FETCH b.genre " +
                         "WHERE b.active = true ORDER BY b.createdAt DESC")
         List<Book> findActiveBooksForChat(Pageable pageable);
+
+    @Query("""
+        SELECT b FROM Book b
+        LEFT JOIN FETCH b.author a
+        LEFT JOIN FETCH b.genre g
+        WHERE b.active = true
+        AND (
+            LOWER(b.title) LIKE LOWER(CONCAT('%', :keyword, '%'))
+            OR LOWER(a.authorName) LIKE LOWER(CONCAT('%', :keyword, '%'))
+            OR LOWER(g.name) LIKE LOWER(CONCAT('%', :keyword, '%'))
+            OR LOWER(b.isbn) LIKE LOWER(CONCAT('%', :keyword, '%'))
+            OR LOWER(b.description) LIKE LOWER(CONCAT('%', :keyword, '%'))
+        )
+        ORDER BY b.createdAt DESC
+        """)
+    List<Book> searchActiveBooksForChat(@Param("keyword") String keyword, Pageable pageable);
 
 }

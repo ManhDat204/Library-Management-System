@@ -24,4 +24,5 @@ public class ReportSubscriptionsResponse {
     private List<ReportSubscriptionMonthlyItemResponse> monthlyStats;
     private List<ReportSubscriptionPlanDistributionItemResponse> planDistribution;
     private List<ReportSubscriptionExpiringItemResponse> expiringSoonSubscriptions;
+    private List<ReportRecentSubscriptionResponse> recentSubscriptions;
 }

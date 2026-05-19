@@ -1,39 +1,25 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import axios from "axios";
-import { Area,AreaChart, Bar, BarChart, CartesianGrid,Cell, Pie,PieChart,ResponsiveContainer,Tooltip, XAxis,YAxis,
+import {
+  Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Pie, PieChart,
+  ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
-import { AlertCircle,ArrowDownRight,ArrowUpRight,Bell,Book,DollarSign, FileText, Users,
+import {
+  AlertCircle, DollarSign, FileText, Users, Download, X, FileDown,
 } from "lucide-react";
+import { fineService } from "../../services/fineService";
+
+
 
 const api = axios.create({ baseURL: "http://localhost:8080/api" });
-
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
+  const token = sessionStorage.getItem("token");
+  if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
 
 const COLORS = ["#378ADD", "#1D9E75", "#BA7517", "#D4537E", "#534AB7", "#D85A30"];
 const AVAILABLE_YEARS = [2025, 2026];
-const REPORT_TABS = [
-  { id: "revenue", label: "Doanh thu" },
-  { id: "users", label: "Nguoi dung" },
-  { id: "books", label: "Sach" },
-  { id: "loans", label: "Muon / tra" },
-  { id: "fines", label: "Tien phat" },
-  { id: "subscriptions", label: "Goi dang ky" },
-];
-
-const revenueCompareChart = [
-  { month: "T1", current: 9400000, prev: 8600000 },
-  { month: "T2", current: 10500000, prev: 9200000 },
-  { month: "T3", current: 8780000, prev: 9100000 },
-  { month: "T4", current: 11400000, prev: 9800000 },
-  { month: "T5", current: 12000000, prev: 10200000 },
-  { month: "T6", current: 11400000, prev: 9800000 },
-];
 
 const revenueChart = [
   { month: "T1", subscription: 8200000, fines: 1200000 },
@@ -44,56 +30,29 @@ const revenueChart = [
   { month: "T6", subscription: 9800000, fines: 1600000 },
 ];
 
-const genderDistribution = [
-  { name: "Nam", value: 45, fill: "#3B82F6" },
-  { name: "Nu", value: 55, fill: "#EC4899" },
-];
-
 const defaultGenreChart = [
-  { name: "Van hoc", value: 420 },
+  { name: "Văn học", value: 420 },
   { name: "KHKT", value: 280 },
-  { name: "Ky nang", value: 310 },
-  { name: "Ngoai ngu", value: 210 },
-  { name: "Thieu nhi", value: 185 },
-  { name: "Lich su", value: 120 },
+  { name: "Kỹ năng", value: 310 },
+  { name: "Ngoại ngữ", value: 210 },
+  { name: "Thiếu nhi", value: 185 },
+  { name: "Lịch sử", value: 120 },
 ];
 
-const topBooks = [
-  { id: 1, rank: 1, title: "Dac Nhan Tam", author: "Dale Carnegie", borrows: 87, available: 2, total: 5 },
-  { id: 2, rank: 2, title: "Nha Gia Kim", author: "Paulo Coelho", borrows: 74, available: 1, total: 4 },
-  { id: 3, rank: 3, title: "Sapiens", author: "Yuval Noah Harari", borrows: 68, available: 3, total: 5 },
-  { id: 4, rank: 4, title: "Harry Potter T1", author: "J.K. Rowling", borrows: 62, available: 0, total: 6 },
-  { id: 5, rank: 5, title: "Atomic Habits", author: "James Clear", borrows: 54, available: 2, total: 4 },
-];
-
-const loanHeatmap = [
-  { day: "Thu 2", count: 82, level: 3 },
-  { day: "Thu 3", count: 64, level: 2 },
-  { day: "Thu 4", count: 71, level: 2 },
-  { day: "Thu 5", count: 55, level: 1 },
-  { day: "Thu 6", count: 90, level: 4 },
-  { day: "Thu 7", count: 110, level: 5 },
-  { day: "CN", count: 98, level: 4 },
-];
-
-const overdueLoaners = [
-  { id: 1, name: "Nguyen Van A", book: "Dac Nhan Tam", dueDate: "10/04/2026", days: 15, fine: 75000, contacted: false },
-  { id: 2, name: "Tran Thi B", book: "Harry Potter T1", dueDate: "17/04/2026", days: 8, fine: 40000, contacted: true },
-  { id: 3, name: "Le Van C", book: "Tu Duy Nhanh va Cham", dueDate: "20/04/2026", days: 5, fine: 25000, contacted: false },
-  { id: 4, name: "Pham Thi D", book: "Sapiens", dueDate: "08/04/2026", days: 17, fine: 85000, contacted: false },
-  { id: 5, name: "Hoang Van E", book: "Nha Gia Kim", dueDate: "15/04/2026", days: 10, fine: 50000, contacted: true },
+const fallbackLoanHeatmap = [
+  { day: "Thứ 2", count: 82 },
+  { day: "Thứ 3", count: 64 },
+  { day: "Thứ 4", count: 71 },
+  { day: "Thứ 5", count: 55 },
+  { day: "Thứ 6", count: 90 },
+  { day: "Thứ 7", count: 110 },
+  { day: "CN", count: 98 },
 ];
 
 const fineReasons = [
-  { name: "Qua han", value: 65, fill: "#E24B4A" },
-  { name: "Hu sach", value: 22, fill: "#BA7517" },
-  { name: "Mat sach", value: 13, fill: "#378ADD" },
-];
-
-const finesAging = [
-  { label: "0-7 ngay", count: 18, amount: 180000, color: "#BA7517" },
-  { label: "8-30 ngay", count: 15, amount: 220000, color: "#E24B4A" },
-  { label: "> 30 ngay", count: 9, amount: 80000, color: "#791F1F" },
+  { name: "Quá hạn", value: 65, fill: "#E24B4A" },
+  { name: "Hư sách", value: 22, fill: "#BA7517" },
+  { name: "Mất sách", value: 13, fill: "#378ADD" },
 ];
 
 const finesTrend = [
@@ -110,43 +69,46 @@ const formatVND = (value) =>
 
 const formatCompactMoney = (value) => {
   if (value == null) return "--";
-  if (value >= 1000000000) return `${(value / 1000000000).toFixed(1)}B `;
-  if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M `;
-  return `${Number(value).toLocaleString("vi-VN")} `;
+  if (value >= 1000000000) return `${(value / 1000000000).toFixed(1)}B`;
+  if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+  return `${Number(value).toLocaleString("vi-VN")}`;
 };
 
-const sumByKey = (items, key) => items.reduce((sum, item) => sum + (item[key] ?? 0), 0);
+const getDateRangeForYear = (year) => ({
+  start: `${year}-01-01`,
+  end: `${year}-12-31`,
+});
 
-const maxBy = (items, getter) =>
-  items.reduce((currentMax, item) => {
-    if (!currentMax) {
-      return item;
-    }
-    return getter(item) > getter(currentMax) ? item : currentMax;
-  }, null);
+const DOW_LABELS = {
+  1: "Thứ 2", 2: "Thứ 3", 3: "Thứ 4",
+  4: "Thứ 5", 5: "Thứ 6", 6: "Thứ 7", 7: "CN",
+};
 
-const getDateRangeForYear = (year) => {
-  return {
-    start: `${year}-01-01`,
-    end: `${year}-12-31`,
-  };
+const normalizeLoanHeatmap = (raw) => {
+  if (!raw || raw.length === 0) return fallbackLoanHeatmap;
+  if (raw[0]?.dayOfWeek != null) {
+    return Object.entries(DOW_LABELS).map(([key, label]) => {
+      const found = raw.find((r) => String(r.dayOfWeek) === key);
+      return { day: label, count: found?.count ?? 0 };
+    });
+  }
+  if (raw[0]?.day != null) return raw;
+  if (typeof raw[0] === "number") {
+    return Object.values(DOW_LABELS).map((label, i) => ({ day: label, count: raw[i] ?? 0 }));
+  }
+  return fallbackLoanHeatmap;
 };
 
 const Skeleton = ({ w = "100%", h = 24, r = 8 }) => (
-  <div
-    style={{
-      width: w,
-      height: h,
-      borderRadius: r,
-      flexShrink: 0,
-      background: "linear-gradient(90deg,#f0f0f0 25%,#e8e8e8 50%,#f0f0f0 75%)",
-      backgroundSize: "200% 100%",
-      animation: "shimmer 1.4s infinite",
-    }}
-  />
+  <div style={{
+    width: w, height: h, borderRadius: r, flexShrink: 0,
+    background: "linear-gradient(90deg,#f0f0f0 25%,#e8e8e8 50%,#f0f0f0 75%)",
+    backgroundSize: "200% 100%", animation: "shimmer 1.4s infinite",
+  }} />
 );
 
-const KpiCard = ({ label, value, icon: Icon, iconBg, delta, deltaPositive, loading }) => (
+
+const KpiCard = ({ label, value, icon: Icon, iconBg, loading }) => (
   <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
     <div className="flex items-start justify-between gap-3 mb-3">
       <p className="text-xs text-gray-500 font-medium truncate">{label}</p>
@@ -154,37 +116,25 @@ const KpiCard = ({ label, value, icon: Icon, iconBg, delta, deltaPositive, loadi
         <Icon size={18} className="text-white" />
       </div>
     </div>
-    {loading ? (
-      <Skeleton h={30} w={120} r={8} />
-    ) : (
-      <p className="text-[1.8rem] leading-none font-bold text-slate-950 truncate">{value}</p>
-    )}
-    {!loading && delta ? (
-      <div
-        className={`flex items-center gap-1 mt-3 text-xs font-medium ${
-          deltaPositive ? "text-emerald-600" : "text-red-500"
-        }`}
-      >
-        {deltaPositive ? <ArrowUpRight size={15} /> : <ArrowDownRight size={15} />}
-        <span>{delta}</span>
-      </div>
-    ) : null}
+    {loading
+      ? <Skeleton h={30} w={120} r={8} />
+      : <p className="text-[1.8rem] leading-none font-bold text-slate-950 truncate">{value}</p>
+    }
   </div>
 );
 
 const ChartTooltip = ({ active, payload, label }) => {
-  if (!active || !payload?.length) {
-    return null;
-  }
-
+  if (!active || !payload?.length) return null;
   return (
     <div className="bg-white rounded-xl p-3 shadow-lg border border-gray-100 text-xs">
       <p className="font-semibold text-gray-900 mb-1">{label}</p>
-      {payload.map((item, index) => (
-        <p key={`${item.name}-${index}`} style={{ color: item.color ?? item.fill }}>
+      {payload.map((item, i) => (
+        <p key={i} style={{ color: item.color ?? item.stroke ?? item.fill }}>
           {item.name}:{" "}
           <strong>
-            {typeof item.value === "number" && item.value > 10000 ? formatVND(item.value) : item.value}
+            {typeof item.value === "number" && item.value > 10000
+              ? formatVND(item.value)
+              : item.value}
           </strong>
         </p>
       ))}
@@ -203,59 +153,76 @@ const ChartLegend = ({ items }) => (
   </div>
 );
 
-const ChartCard = ({ title, legend, loading, height = 260, children }) => (
-  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-    <h3 className="text-sm font-semibold text-gray-900 mb-3">{title}</h3>
+const ChartCard = ({ title, legend, loading, height = 260, children, className = "" }) => (
+  <div className={`bg-white rounded-2xl border border-gray-100 shadow-sm p-5 ${className}`}>
+    {title && <h3 className="text-sm font-semibold text-gray-900 mb-3">{title}</h3>}
     {legend ? <ChartLegend items={legend} /> : null}
-    {loading ? <Skeleton h={height} r={12} /> : <ResponsiveContainer width="100%" height={height}>{children}</ResponsiveContainer>}
+    {loading
+      ? <Skeleton h={height} r={12} />
+      : (
+        <div style={{ width: "100%", minHeight: height }}>
+          <ResponsiveContainer width="100%" height={height}>{children}</ResponsiveContainer>
+        </div>
+      )}
   </div>
 );
 
-const Badge = ({ children, color = "gray" }) => {
-  const map = {
-    red: "bg-red-100 text-red-700",
-    green: "bg-emerald-100 text-emerald-700",
-    amber: "bg-amber-100 text-amber-700",
-    blue: "bg-blue-100 text-blue-700",
-    gray: "bg-gray-100 text-gray-600",
-    purple: "bg-purple-100 text-purple-700",
-  };
-  return <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold ${map[color]}`}>{children}</span>;
+const DonutWithLegend = ({ data, loading, height = 180 }) => {
+  const donutH = Math.round(height * 0.72);
+  return (
+    <div className="flex flex-col items-center gap-4">
+      <div style={{ width: "100%", height: donutH }}>
+        {loading ? (
+          <Skeleton h={donutH} w="100%" r={donutH / 2} />
+        ) : (
+          <ResponsiveContainer width="100%" height={donutH}>
+            <PieChart margin={{ top: 4, right: 4, bottom: 4, left: 4 }}>
+              <Pie data={data} cx="50%" cy="50%" innerRadius="42%" outerRadius="72%" dataKey="value" paddingAngle={2}>
+                {data.map((entry, i) => (
+                  <Cell key={i} fill={entry.fill ?? COLORS[i % COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip formatter={(v) => `${v}%`} />
+            </PieChart>
+          </ResponsiveContainer>
+        )}
+      </div>
+      <div className="flex flex-wrap justify-center gap-x-5 gap-y-2">
+        {data.map((item, i) => (
+          <span key={i} className="flex items-center gap-1.5 text-xs text-gray-600">
+            <span
+              className="w-2.5 h-2.5 rounded-sm flex-shrink-0"
+              style={{ background: item.fill ?? COLORS[i % COLORS.length] }}
+            />
+            {item.name}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
 };
 
-const DataTable = ({ columns, rows, loading, emptyText = "Khong co du lieu" }) => (
+const DataTable = ({ columns, rows, loading, emptyText = "Không có dữ liệu" }) => (
   <div className="overflow-x-auto">
-    {loading ? (
-      <Skeleton h={220} r={12} />
-    ) : rows.length === 0 ? (
+    {loading ? <Skeleton h={220} r={12} /> : rows.length === 0 ? (
       <p className="text-xs text-gray-400 text-center py-8">{emptyText}</p>
     ) : (
       <table className="w-full text-xs">
         <thead>
           <tr className="bg-gray-50">
-            {columns.map((column, index) => (
-              <th
-                key={column.label ?? column.key ?? index}
-                className={`px-3 py-2.5 font-semibold text-gray-600 ${
-                  column.align === "right" ? "text-right" : "text-left"
-                } ${index === 0 ? "rounded-tl-lg" : ""} ${index === columns.length - 1 ? "rounded-tr-lg" : ""}`}
-              >
-                {column.label}
+            {columns.map((col, i) => (
+              <th key={i} className={`px-3 py-2.5 font-semibold text-gray-600 ${col.align === "right" ? "text-right" : "text-left"} ${i === 0 ? "rounded-tl-lg" : ""} ${i === columns.length - 1 ? "rounded-tr-lg" : ""}`}>
+                {col.label}
               </th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {rows.map((row, rowIndex) => (
-            <tr key={row.id ?? rowIndex} className="border-t border-gray-50 hover:bg-gray-50">
-              {columns.map((column, columnIndex) => (
-                <td
-                  key={`${column.label ?? column.key}-${columnIndex}`}
-                  className={`px-3 py-3 ${
-                    column.align === "right" ? "text-right" : ""
-                  } ${column.bold ? "font-medium text-gray-900" : "text-gray-600"}`}
-                >
-                  {column.render ? column.render(row) : row[column.key]}
+          {rows.map((row, ri) => (
+            <tr key={row.id ?? ri} className="border-t border-gray-50 hover:bg-gray-50">
+              {columns.map((col, ci) => (
+                <td key={ci} className={`px-3 py-3 ${col.align === "right" ? "text-right" : ""} ${col.bold ? "font-medium text-gray-900" : "text-gray-600"}`}>
+                  {col.render ? col.render(row) : row[col.key]}
                 </td>
               ))}
             </tr>
@@ -266,152 +233,469 @@ const DataTable = ({ columns, rows, loading, emptyText = "Khong co du lieu" }) =
   </div>
 );
 
-const DonutWithLegend = ({ data, loading, height = 180 }) => (
-  <div className="flex items-center gap-6">
-    <div style={{ width: 140, height, flexShrink: 0 }}>
-      {loading ? (
-        <Skeleton h={height} w={140} r={70} />
-      ) : (
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <Pie data={data} cx="50%" cy="50%" innerRadius={42} outerRadius={65} dataKey="value" paddingAngle={2}>
-              {data.map((entry, index) => (
-                <Cell key={`${entry.name}-${index}`} fill={entry.fill ?? COLORS[index % COLORS.length]} />
-              ))}
-            </Pie>
-            <Tooltip formatter={(value) => `${value}%`} />
-          </PieChart>
-        </ResponsiveContainer>
-      )}
-    </div>
-    <div className="flex-1 space-y-2.5">
-      {data.map((item, index) => (
-        <div key={`${item.name}-${index}`}>
-          <div className="flex justify-between text-xs mb-1">
-            <span className="text-gray-600">{item.name}</span>
-            <span className="font-semibold text-gray-900">{item.value}%</span>
-          </div>
-          <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-            <div
-              className="h-full rounded-full"
-              style={{ width: `${item.value}%`, background: item.fill ?? COLORS[index % COLORS.length] }}
-            />
-          </div>
-        </div>
-      ))}
-    </div>
-  </div>
-);
 
-const AgingBar = ({ label, count, total, amount, color }) => (
-  <div className="flex items-center gap-3">
-    <span className="text-xs text-gray-500 w-24 flex-shrink-0">{label}</span>
-    <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
-      <div
-        className="h-full rounded-full"
-        style={{ width: `${total ? Math.round((count / total) * 100) : 0}%`, background: color }}
-      />
-    </div>
-    <span className="text-xs font-semibold text-gray-700 w-8 text-right">{count}</span>
-    <span className="text-xs text-gray-400 w-24 text-right">{formatVND(amount)}</span>
-  </div>
-);
+const ReportPreview = ({
+  selectedYear, startDate, endDate,
+  overview, subscriptionsReport,
+  loanHeatmap, fineReasonData,
+  dynamicGenreChart, malePercentage, femalePercentage,
+}) => {
+  const now = new Date();
+  const o = overview ?? {};
+  const s = subscriptionsReport ?? {};
 
-const TabButton = ({ active, children, onClick }) => (
-  <button
-    onClick={onClick}
-    className={`px-4 py-2 rounded-xl text-sm font-medium transition whitespace-nowrap ${
-      active ? "bg-slate-900 text-white shadow-sm" : "text-slate-600 hover:bg-slate-100"
-    }`}
-  >
-    {children}
-  </button>
-);
-const TopBookRow = ({ rank, book }) => {
-  const [imgError, setImgError] = useState(false);
-  const medals = ["#f59e0b", "#9ca3af", "#cd7f32"];
-  const isMedal = rank <= 3;
+  const fmtNum = (v) => (v != null ? Number(v).toLocaleString("vi-VN") : "0");
+  const fmtMoney = (v) => (v != null ? `${Number(v).toLocaleString("vi-VN")} VND` : "0 VND");
+
+  const revenueRows = o.monthlyRevenue?.length > 0
+    ? o.monthlyRevenue.slice(0, 12).map((r) => ({
+        month: r.month,
+        sub: Number(r.subscription || 0).toLocaleString("vi-VN"),
+        fine: Number(r.fines || 0).toLocaleString("vi-VN"),
+        total: Number((r.subscription || 0) + (r.fines || 0)).toLocaleString("vi-VN"),
+      }))
+    : [
+        { month: "T1", sub: "8.200.000", fine: "1.200.000", total: "9.400.000" },
+        { month: "T2", sub: "9.100.000", fine: "1.400.000", total: "10.500.000" },
+        { month: "T3", sub: "7.800.000", fine: "980.000", total: "8.780.000" },
+        { month: "T4", sub: "9.800.000", fine: "1.600.000", total: "11.400.000" },
+        { month: "T5", sub: "10.200.000", fine: "1.800.000", total: "12.000.000" },
+        { month: "T6", sub: "9.800.000", fine: "1.600.000", total: "11.400.000" },
+      ];
+
+  const topFines = o.topFineUsers?.slice(0, 5) ?? [];
+  const recentBorrows = o.recentBorrows?.slice(0, 8) ?? [];
+  const recentReturns = o.recentReturns?.slice(0, 8) ?? [];
+
+  const planDist = s.planDistribution?.length > 0
+    ? s.planDistribution
+    : [
+        { name: "Premium", value: 60 },
+        { name: "Standard", value: 30 },
+        { name: "Basic", value: 10 },
+      ];
+
+  const sec = {
+    fontSize: "12px", fontWeight: "700", textTransform: "uppercase",
+    letterSpacing: "0.06em", borderBottom: "2px solid #000",
+    paddingBottom: "4px", marginBottom: "10px", marginTop: "20px",
+  };
+
+  const tbl = { width: "100%", borderCollapse: "collapse", fontSize: "11px" };
+  const th = { border: "1px solid #bbb", padding: "5px 8px", background: "#ececec", fontWeight: "700", textAlign: "left" };
+  const td = (align = "left") => ({ border: "1px solid #bbb", padding: "5px 8px", textAlign: align });
+  const stripe = (i) => ({ background: i % 2 === 0 ? "#fafafa" : "#fff" });
 
   return (
     <div
+      id="report-print-content"
       style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 12,
-        padding: "10px 0",
-        borderBottom: "1px solid #f9fafb",
+        width: "100%", fontFamily: "'Times New Roman', serif",
+        fontSize: "12px", color: "#000", background: "#fff", lineHeight: 1.5,
       }}
-      className="last:border-0"
     >
-      {/* Hạng */}
-      <span
-        style={{
-          width: 26, height: 26, borderRadius: "50%", flexShrink: 0,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 11, fontWeight: 700,
-          background: isMedal ? medals[rank - 1] + "22" : "#f3f4f6",
-          color: isMedal ? medals[rank - 1] : "#9ca3af",
-        }}
-      >
-        {rank}
-      </span>
-
-      {/* Ảnh bìa */}
-      <div
-        style={{
-          width: 36, height: 50, borderRadius: 6, overflow: "hidden",
-          background: "#f3f4f6", flexShrink: 0,
-          boxShadow: "0 2px 8px rgba(0,0,0,0.10)",
-        }}
-      >
-        {book.coverImageUrl && !imgError ? (
-          <img
-            src={book.coverImageUrl}
-            alt={book.title}
-            onError={() => setImgError(true)}
-            style={{ width: "100%", height: "100%", objectFit: "cover" }}
-          />
-        ) : (
-          <div style={{
-            width: "100%", height: "100%",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            background: "linear-gradient(135deg,#e0e7ff,#ede9fe)",
-          }}>
-            <Book size={13} color="#a5b4fc" />
-          </div>
-        )}
+      {/* ── Header ── */}
+      <div style={{ textAlign: "center", borderBottom: "2px solid #000", paddingBottom: "12px", marginBottom: "10px" }}>
+        <div style={{ fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.12em" }}>Hệ thống Thư viện</div>
+        <div style={{ fontSize: "20px", fontWeight: "800", margin: "6px 0 4px" }}>BÁO CÁO THỐNG KÊ THƯ VIỆN</div>
+        <div style={{ fontSize: "12px" }}>Năm {selectedYear} &nbsp;·&nbsp; Từ {startDate} đến {endDate}</div>
+        <div style={{ fontSize: "10px", color: "#555", marginTop: "4px" }}>
+          Xuất ngày: {now.toLocaleDateString("vi-VN")} &nbsp;|&nbsp;
+          Mã BC: BC-{selectedYear}-{String(now.getMonth() + 1).padStart(2, "0")}
+        </div>
       </div>
 
-      {/* Tên + tác giả */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{
-          fontSize: 13, fontWeight: 600, color: "#111827",
-          whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-        }}>
-          {book.title}
-        </p>
-        <p style={{
-          fontSize: 11, color: "#6b7280", marginTop: 2,
-          whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-        }}>
-          {book.authorName ?? book.author ?? "—"}
-        </p>
-      </div>
 
-      <Badge color="blue">
-        {book.totalLoans ?? book.totalLoans ?? 0} lượt
-      </Badge>
+      <table style={tbl}>
+        <tbody>
+          <tr>
+            <td style={td()}>Đơn vị báo cáo: <strong> Phòng Thư viện, Hà Nội</strong></td>
+            <td style={td()}>Người lập: <strong>Ban Quản trị Thư viện</strong></td>
+            <td style={td()}>Phê duyệt: <strong>Ban Giám đốc</strong></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div style={sec}>1. Tổng quan chỉ số hoạt động</div>
+      <table style={tbl}>
+        <thead>
+          <tr>
+            <th style={th}>Chỉ số</th>
+            <th style={{ ...th, textAlign: "right" }}>Giá trị</th>
+            <th style={th}>Chỉ số</th>
+            <th style={{ ...th, textAlign: "right" }}>Giá trị</th>
+          </tr>
+        </thead>
+        <tbody>
+          {[
+            ["Tổng doanh thu", fmtMoney(o.totalRevenue), "Tổng người dùng", fmtNum(o.totalUsers)],
+            ["Doanh thu đăng ký", fmtMoney(o.subscriptionRevenue), "Người dùng hoạt động", fmtNum(o.activeUsers)],
+            ["Doanh thu tiền phạt", fmtMoney(o.fineRevenue), "Tổng lượt mượn", fmtNum(o.totalLoans)],
+            ["Gói đang hoạt động", fmtNum(s.activeSubscriptions), "Đang mượn", fmtNum(o.activeLoans)],
+            ["Tỉ lệ giới tính – Nam", `${malePercentage}%`, "Tỉ lệ giới tính – Nữ", `${femalePercentage}%`],
+            ["Người nợ phạt chưa TT", fmtNum(o.usersWithPendingFines) + " người", "Tỉ lệ trả đúng hạn", o.onTimeRate ? `${o.onTimeRate}%` : "—"],
+          ].map(([k1, v1, k2, v2], i) => (
+            <tr key={i} style={stripe(i)}>
+              <td style={td()}>{k1}</td>
+              <td style={td("right")}><strong>{v1}</strong></td>
+              <td style={td()}>{k2}</td>
+              <td style={td("right")}><strong>{v2}</strong></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <div style={sec}>2. Doanh thu theo tháng (VND)</div>
+      <table style={tbl}>
+        <thead>
+          <tr>
+            <th style={th}>Tháng</th>
+            <th style={{ ...th, textAlign: "right" }}>Gói đăng ký</th>
+            <th style={{ ...th, textAlign: "right" }}>Tiền phạt</th>
+            <th style={{ ...th, textAlign: "right" }}>Tổng cộng</th>
+          </tr>
+        </thead>
+        <tbody>
+          {revenueRows.map((r, i) => (
+            <tr key={i} style={stripe(i)}>
+              <td style={td()}>{r.month}</td>
+              <td style={td("right")}>{r.sub}</td>
+              <td style={td("right")}>{r.fine}</td>
+              <td style={td("right")}><strong>{r.total}</strong></td>
+            </tr>
+          ))}
+          <tr style={{ fontWeight: "700", background: "#ececec" }}>
+            <td style={td()}>Tổng cộng</td>
+            <td style={td("right")}>{fmtNum(o.subscriptionRevenue)}</td>
+            <td style={td("right")}>{fmtNum(o.fineRevenue)}</td>
+            <td style={td("right")}>{fmtNum(o.totalRevenue)}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div style={sec}>3. Thống kê tiền phạt</div>
+      <table style={tbl}>
+        <thead>
+          <tr>
+            <th style={th}>Lý do phạt</th>
+            <th style={{ ...th, textAlign: "right" }}>Tỉ lệ (%)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {(fineReasonData?.length > 0
+            ? fineReasonData
+            : [{ name: "Quá hạn", value: 65 }, { name: "Hư sách", value: 22 }, { name: "Mất sách", value: 13 }]
+          ).map((item, i) => (
+            <tr key={i} style={stripe(i)}>
+              <td style={td()}>{item.name}</td>
+              <td style={td("right")}>{item.value}%</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      {topFines.length > 0 && (
+        <>
+          <div style={{ fontSize: "11px", fontWeight: "700", margin: "10px 0 6px" }}>Danh sách nợ phạt cao nhất:</div>
+          <table style={tbl}>
+            <thead>
+              <tr>
+                <th style={th}>Người dùng</th>
+                <th style={th}>Lý do</th>
+                <th style={{ ...th, textAlign: "right" }}>Số tiền (VND)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {topFines.map((r, i) => (
+                <tr key={i} style={stripe(i)}>
+                  <td style={td()}>{r.userName || "—"}</td>
+                  <td style={td()}>{r.reason || r.fineType || "—"}</td>
+                  <td style={td("right")}>{Number(r.amount || 0).toLocaleString("vi-VN")}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      )}
+
+      <div style={sec}>4. Lượt mượn theo ngày trong tuần</div>
+      <table style={tbl}>
+        <thead>
+          <tr>
+            {loanHeatmap.map((h, i) => (
+              <th key={i} style={{ ...th, textAlign: "center" }}>{h.day}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            {loanHeatmap.map((h, i) => (
+              <td key={i} style={{ ...td("center"), fontWeight: "700" }}>{h.count}</td>
+            ))}
+          </tr>
+        </tbody>
+      </table>
+
+
+      <div style={sec}>5. Thể loại sách được mượn nhiều</div>
+      <table style={tbl}>
+        <thead>
+          <tr>
+            <th style={th}>Thể loại</th>
+            <th style={{ ...th, textAlign: "right" }}>Số lượt mượn</th>
+            <th style={{ ...th, textAlign: "right" }}>Tỉ lệ (%)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {(() => {
+            const total = dynamicGenreChart.reduce((s, d) => s + d.value, 0);
+            return dynamicGenreChart.map((g, i) => {
+              const pct = g.percentage ?? (total > 0 ? Math.round((g.value / total) * 100) : 0);
+              return (
+                <tr key={i} style={stripe(i)}>
+                  <td style={td()}>{g.name}</td>
+                  <td style={td("right")}>{g.value}</td>
+                  <td style={td("right")}>{pct}%</td>
+                </tr>
+              );
+            });
+          })()}
+        </tbody>
+      </table>
+
+      {/* ── 6. Subscriptions ── */}
+      <div style={sec}>6. Thống kê gói đăng ký</div>
+      <table style={tbl}>
+        <thead>
+          <tr>
+            <th style={th}>Chỉ số</th>
+            <th style={{ ...th, textAlign: "right" }}>Giá trị</th>
+            <th style={th}>Loại gói</th>
+            <th style={{ ...th, textAlign: "right" }}>Tỉ lệ (%)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {[
+            ["Tổng gói đã đăng ký", fmtNum(s.totalSubscriptions)],
+            ["Gói đang hoạt động", fmtNum(s.activeSubscriptions)],
+            ["Sắp hết hạn (7 ngày)", fmtNum(s.expiringSoonCount)],
+          ].map(([k, v], i) => (
+            <tr key={i} style={stripe(i)}>
+              <td style={td()}>{k}</td>
+              <td style={td("right")}><strong>{v}</strong></td>
+              <td style={td()}>{planDist[i]?.name ?? "—"}</td>
+              <td style={td("right")}>{planDist[i]?.value ?? "—"}{planDist[i] ? "%" : ""}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      {/* ── 7. Recent Borrows ── */}
+      {recentBorrows.length > 0 && (
+        <>
+          <div style={sec}>7. Chi tiết mượn gần đây</div>
+          <table style={tbl}>
+            <thead>
+              <tr>
+                {["Người mượn", "Tên sách", "Ngày mượn", "Trạng thái"].map((h, i) => (
+                  <th key={i} style={th}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {recentBorrows.map((r, i) => (
+                <tr key={i} style={stripe(i)}>
+                  <td style={td()}>{r.userName || "—"}</td>
+                  <td style={td()}>{r.bookTitle || "—"}</td>
+                  <td style={td()}>{r.checkoutDate || "—"}</td>
+                  <td style={td()}>
+                    {r.status === "CHECK_OUT" ? "Đang mượn"
+                      : r.status === "OVERDUE" ? "Quá hạn"
+                      : r.status === "SHIPPING" ? "Đang vận chuyển"
+                      : r.status || "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      )}
+
+      {/* ── 8. Recent Returns ── */}
+      {recentReturns.length > 0 && (
+        <>
+          <div style={sec}>8. Chi tiết trả gần đây</div>
+          <table style={tbl}>
+            <thead>
+              <tr>
+                {["Người trả", "Tên sách", "Ngày trả", "Tình trạng"].map((h, i) => (
+                  <th key={i} style={th}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {recentReturns.map((r, i) => (
+                <tr key={i} style={stripe(i)}>
+                  <td style={td()}>{r.userName || "—"}</td>
+                  <td style={td()}>{r.bookTitle || "—"}</td>
+                  <td style={td()}>{r.returnDate || "—"}</td>
+                  <td style={td()}>{r.overdueDays > 0 ? `Trễ ${r.overdueDays} ngày` : "Đúng hạn"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      )}
+
+      {/* Footer */}
+      <div style={{
+        marginTop: "24px", borderTop: "1px solid #ccc", paddingTop: "8px",
+        fontSize: "10px", color: "#555",
+        display: "flex", justifyContent: "space-between",
+      }}>
+        <span>Hệ thống Thư viện – Báo cáo năm {selectedYear}</span>
+        <span>Xuất ngày: {now.toLocaleDateString("vi-VN")}</span>
+      </div>
     </div>
   );
 };
 
+// ── ExportModal – with live A4 preview ───────────────────────────────────────
+const ExportModal = ({
+  isOpen, onClose, onConfirm, exportLoading,
+  selectedYear, startDate, endDate,
+  overview, subscriptionsReport,
+  loanHeatmap, fineReasonData,
+  dynamicGenreChart, malePercentage, femalePercentage,
+}) => {
+  if (!isOpen) return null;
 
+  return (
+    <div
+      style={{
+        position: "fixed", inset: 0, zIndex: 50,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        background: "rgba(0,0,0,0.45)",
+      }}
+      onClick={(e) => { if (e.target === e.currentTarget && !exportLoading) onClose(); }}
+    >
+      <div style={{
+        width: "900px", maxWidth: "95vw", maxHeight: "90vh",
+        background: "#fff", borderRadius: "12px",
+        boxShadow: "0 8px 40px rgba(0,0,0,0.2)",
+        display: "flex", flexDirection: "column", overflow: "hidden",
+      }}>
+
+        {/* Header */}
+        <div style={{
+          padding: "14px 20px", borderBottom: "1px solid #e5e7eb",
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          flexShrink: 0,
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <FileDown size={16} color="#374151" />
+            <span style={{ fontWeight: "700", fontSize: "15px", color: "#111" }}>
+              Xem trước báo cáo – Năm {selectedYear}
+            </span>
+          </div>
+          <button
+            onClick={onClose}
+            disabled={exportLoading}
+            style={{
+              width: "28px", height: "28px", borderRadius: "6px",
+              border: "1px solid #e5e7eb", background: "#fff",
+              cursor: exportLoading ? "not-allowed" : "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              opacity: exportLoading ? 0.4 : 1,
+            }}
+          >
+            <X size={14} color="#6b7280" />
+          </button>
+        </div>
+
+        {/* Preview scrollable area */}
+        <div style={{ flex: 1, overflowY: "auto", background: "#d1d5db", padding: "24px" }}>
+          {/* A4 paper */}
+          <div style={{
+            margin: "0 auto",
+            width: "794px",
+            maxWidth: "100%",
+            background: "#fff",
+            boxShadow: "0 2px 20px rgba(0,0,0,0.18)",
+            padding: "48px 56px",
+            boxSizing: "border-box",
+            minHeight: "1123px",
+          }}>
+            <ReportPreview
+              selectedYear={selectedYear}
+              startDate={startDate}
+              endDate={endDate}
+              overview={overview}
+              subscriptionsReport={subscriptionsReport}
+              loanHeatmap={loanHeatmap}
+              fineReasonData={fineReasonData}
+              dynamicGenreChart={dynamicGenreChart}
+              malePercentage={malePercentage}
+              femalePercentage={femalePercentage}
+            />
+          </div>
+        </div>
+
+        {/* Footer actions */}
+        <div style={{
+          padding: "12px 20px", borderTop: "1px solid #e5e7eb",
+          display: "flex", gap: "10px", justifyContent: "flex-end",
+          flexShrink: 0, background: "#f9fafb",
+        }}>
+          <button
+            onClick={onClose}
+            disabled={exportLoading}
+            style={{
+              padding: "9px 22px", borderRadius: "7px",
+              border: "1px solid #d1d5db", background: "#fff",
+              fontSize: "13px", fontWeight: "500", color: "#374151",
+              cursor: exportLoading ? "not-allowed" : "pointer",
+              opacity: exportLoading ? 0.5 : 1,
+            }}
+          >
+            Huỷ
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={exportLoading}
+            style={{
+              padding: "9px 24px", borderRadius: "7px", border: "none",
+              background: exportLoading ? "#9ca3af" : "#111827",
+              fontSize: "13px", fontWeight: "600", color: "#fff",
+              cursor: exportLoading ? "not-allowed" : "pointer",
+              display: "flex", alignItems: "center", gap: "7px",
+            }}
+          >
+            {exportLoading ? (
+              <>
+                <span style={{
+                  width: "13px", height: "13px",
+                  border: "2px solid rgba(255,255,255,0.3)",
+                  borderTop: "2px solid #fff", borderRadius: "50%",
+                  animation: "spin 0.7s linear infinite", display: "inline-block",
+                }} />
+                Đang xuất...
+              </>
+            ) : (
+              <><Download size={14} />Xuất PDF</>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ── Main Reports Component ────────────────────────────────────────────────────
 export default function Reports() {
   const currentYear = new Date().getFullYear();
-  const defaultYear = AVAILABLE_YEARS.includes(currentYear)
-    ? currentYear
-    : AVAILABLE_YEARS[AVAILABLE_YEARS.length - 1];
-  const [activeTab, setActiveTab] = useState("revenue");
+  const defaultYear = AVAILABLE_YEARS.includes(currentYear) ? currentYear : AVAILABLE_YEARS[AVAILABLE_YEARS.length - 1];
+
   const [selectedYear, setSelectedYear] = useState(defaultYear);
   const [startDate, setStartDate] = useState(() => getDateRangeForYear(defaultYear).start);
   const [endDate, setEndDate] = useState(() => getDateRangeForYear(defaultYear).end);
@@ -420,58 +704,78 @@ export default function Reports() {
   const [overviewError, setOverviewError] = useState("");
   const [subscriptionsReport, setSubscriptionsReport] = useState(null);
   const [loadingSubscriptionsReport, setLoadingSubscriptionsReport] = useState(false);
-  const [topBooksData, setTopBooksData] = useState([]);
-  const [loadingTopBooks, setLoadingTopBooks] = useState(true);
-
+  const [loanHeatmap, setLoanHeatmap] = useState(fallbackLoanHeatmap);
+  const [loadingHeatmap, setLoadingHeatmap] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [fineReasonData, setFineReasonData] = useState(fineReasons);
+  const [loadingFineReasons, setLoadingFineReasons] = useState(false);
 
   useEffect(() => {
-    const fetchOverview = async () => {
+    const fetch = async () => {
       setLoadingOverview(true);
+      setLoadingHeatmap(true);
       setOverviewError("");
       try {
-        const response = await api.get("/admin/reports/overview", {
-          params: { startDate, endDate },
-        });
-        setOverview(response.data);
-      } catch (error) {
+        const res = await api.get("/admin/reports/overview", { params: { startDate, endDate } });
+        setOverview(res.data);
+        if (res.data?.loansByDayOfWeek) setLoanHeatmap(normalizeLoanHeatmap(res.data.loansByDayOfWeek));
+      } catch {
         setOverview(null);
-        setOverviewError("Khong tai duoc thong ke tu backend.");
+        setOverviewError("Không tải được thống kê từ backend.");
       } finally {
         setLoadingOverview(false);
+        setLoadingHeatmap(false);
       }
     };
-    const fetchTopBorrowedBooks = async () => {
-    setLoadingTopBooks(true);
-    try {
-      const res = await api.get("/books/top-borrowed", { params: { limit: 5 } });
-      setTopBooksData(res.data ?? []);
-    } catch {
-      setTopBooksData([]);
-    } finally {
-      setLoadingTopBooks(false);
-    }
-  };
-
-    fetchOverview();
-    fetchTopBorrowedBooks();
+    fetch();
   }, [startDate, endDate]);
 
   useEffect(() => {
-    const fetchSubscriptionsReport = async () => {
+    const fetch = async () => {
+      setLoadingFineReasons(true);
+      try {
+        const res = await fineService.getFineTypeRatios();
+        const FINE_TYPE_MAP = {
+          OVERDUE: { name: "Quá hạn", fill: "#E24B4A" },
+          DAMAGE: { name: "Hư sách", fill: "#BA7517" },
+          LOST: { name: "Mất sách", fill: "#378ADD" },
+        };
+        const mapped = res.data.map((item, i) => ({
+          name: FINE_TYPE_MAP[item.fineType]?.name ?? item.fineType,
+          fill: FINE_TYPE_MAP[item.fineType]?.fill ?? COLORS[i % COLORS.length],
+          value: item.percentage,
+        }));
+        if (mapped.length > 0) setFineReasonData(mapped);
+      } catch { }
+      finally { setLoadingFineReasons(false); }
+    };
+    fetch();
+  }, []);
+
+  useEffect(() => {
+    const fetch = async () => {
       setLoadingSubscriptionsReport(true);
       try {
-        const response = await api.get("/admin/reports/subscriptions", {
-          params: { startDate, endDate },
-        });
-        setSubscriptionsReport(response.data);
-      } catch {
-        setSubscriptionsReport(null);
-      } finally {
-        setLoadingSubscriptionsReport(false);
-      }
+        const res = await api.get("/admin/reports/subscriptions", { params: { startDate, endDate } });
+        setSubscriptionsReport(res.data);
+      } catch { setSubscriptionsReport(null); }
+      finally { setLoadingSubscriptionsReport(false); }
     };
+    fetch();
+  }, [startDate, endDate]);
 
-    fetchSubscriptionsReport();
+  useEffect(() => {
+    const fetch = async () => {
+      setLoadingHeatmap(true);
+      try {
+        const res = await api.get("/book-loans/stats/loans-by-day", { params: { startDate, endDate } });
+        const n = normalizeLoanHeatmap(res.data);
+        if (n !== fallbackLoanHeatmap) setLoanHeatmap(n);
+      } catch { }
+      finally { setLoadingHeatmap(false); }
+    };
+    fetch();
   }, [startDate, endDate]);
 
   const handleYearChange = (year) => {
@@ -482,762 +786,310 @@ export default function Reports() {
   };
 
   const safeOverview = overview ?? {
-    totalRevenue: 0,
-    subscriptionRevenue: 0,
-    fineRevenue: 0,
-    monthlyRevenue: [],
-    activeUsers: 0,
-    totalUsers: 0,
-    totalLoans: 0,
-    onTimeRate: 0,
-    totalFines: 0,
-    usersWithPendingFines: 0,
-    activeSubscriptions: 0,
-    activeSubscriptionRate: 0,
-    maleUsersCount: 0,
-    femaleUsersCount: 0,
-    activeLoans: 0,
-    recentBorrows: [],
-    recentReturns: [],
-    topFineUsers: [],
-  };
-  const safeSubscriptionsReport = subscriptionsReport ?? {
-    totalSubscriptions: 0,
-    activeSubscriptions: 0,
-    expiringSoonCount: 0,
-    activeSubscriptionRate: 0,
-    renewalExpectedRevenue: 0,
-    monthlyStats: [],
-    planDistribution: [],
-    expiringSoonSubscriptions: [],
+    totalRevenue: 0, subscriptionRevenue: 0, fineRevenue: 0, monthlyRevenue: [],
+    activeUsers: 0, totalUsers: 0, totalLoans: 0, onTimeRate: 0, totalFines: 0,
+    usersWithPendingFines: 0, activeLoans: 0,
+    userRoleMaleCount: 0, userRoleFemaleCount: 0,
+    maleUsersCount: 0, femaleUsersCount: 0,
+    recentBorrows: [], recentReturns: [], topFineUsers: [], genreStats: [],
   };
 
-  
-  const finesAgingTotal = finesAging.reduce((sum, item) => sum + item.count, 0);
-  const monthlyRevenueData = safeOverview.monthlyRevenue && safeOverview.monthlyRevenue.length > 0
-    ? safeOverview.monthlyRevenue.map(item => ({
-        month: item.month,
-        subscription: item.subscription || 0,
-        fines: item.fines || 0
+  const safeSubscriptionsReport = subscriptionsReport ?? {
+    totalSubscriptions: 0, activeSubscriptions: 0, expiringSoonCount: 0,
+    monthlyStats: [], planDistribution: [],
+  };
+
+  const monthlyRevenueData = safeOverview.monthlyRevenue?.length > 0
+    ? safeOverview.monthlyRevenue.map((item) => ({
+        month: item.month, subscription: item.subscription || 0, fines: item.fines || 0,
       }))
     : revenueChart;
-    const totalSubscriptionRevenue = sumByKey(monthlyRevenueData, "subscription");
-  const totalFineRevenue = sumByKey(monthlyRevenueData, "fines");
-  const averageMonthlyRevenue = revenueChart.length
-    ? Math.round((totalSubscriptionRevenue + totalFineRevenue) / revenueChart.length)
-    : 0;
-  const bestRevenueMonth = maxBy(
-    revenueChart,
-    (item) => (item.subscription ?? 0) + (item.fines ?? 0),
-  );
 
-  // Use topBorrowers from API or fallback to empty array
-  const dynamicTopBorrowers = safeOverview.topBorrowers && safeOverview.topBorrowers.length > 0 
-    ? safeOverview.topBorrowers 
-    : [];
-
-  const averageBorrowerOnTime = dynamicTopBorrowers.length
-    ? Math.round(
-        dynamicTopBorrowers.reduce(
-          (sum, item) => sum + Number.parseInt(item.onTime, 10),
-          0,
-        ) / dynamicTopBorrowers.length,
-      )
-    : 0;
-  const premiumBorrowers = dynamicTopBorrowers.filter((item) => item.plan === "Premium").length;
-  
-  // Use genreStats from API or fallback to default
-  const dynamicGenreChart = safeOverview.genreStats && safeOverview.genreStats.length > 0
-    ? safeOverview.genreStats.map(item => ({
-        name: item.genreName,
-        value: item.loanCount,
-        percentage: item.percentage
+  const dynamicGenreChart = safeOverview.genreStats?.length > 0
+    ? safeOverview.genreStats.map((item) => ({
+        name: item.genreName, value: item.loanCount, percentage: item.percentage,
       }))
     : defaultGenreChart;
-  
-  const totalTrackedBorrows = sumByKey(topBooks, "borrows");
-  const lowStockTitles = topBooks.filter((item) => item.available <= 1).length;
-  const outOfStockTitles = topBooks.filter((item) => item.available === 0).length;
-  const leadingGenre = maxBy(dynamicGenreChart, (item) => item.value ?? 0);
-  const totalOverdueFine = sumByKey(overdueLoaners, "fine");
-  const pendingContacts = overdueLoaners.filter((item) => !item.contacted).length;
-  const busiestLoanDay = maxBy(loanHeatmap, (item) => item.count ?? 0);
-  const outstandingFines = finesAging.reduce((sum, item) => sum + item.amount, 0);
-  const topFineReason = maxBy(fineReasons, (item) => item.value ?? 0);
-  const topDebtor = safeOverview.topFineUsers?.[0];
 
-  // Calculate gender distribution
-  const totalUsersForGender = safeOverview.totalUsers ?? 1;
-  const malePercentage = totalUsersForGender > 0 
-    ? Math.round((safeOverview.maleUsersCount / totalUsersForGender) * 100) 
-    : 0;
-  const femalePercentage = totalUsersForGender > 0 
-    ? Math.round((safeOverview.femaleUsersCount / totalUsersForGender) * 100) 
-    : 0;
-  
+  const userMaleCount = safeOverview.userRoleMaleCount || safeOverview.maleUsersCount || 0;
+  const userFemaleCount = safeOverview.userRoleFemaleCount || safeOverview.femaleUsersCount || 0;
+  const userRoleTotal = (userMaleCount + userFemaleCount) || 1;
+  const malePercentage = Math.round((userMaleCount / userRoleTotal) * 100);
+  const femalePercentage = Math.round((userFemaleCount / userRoleTotal) * 100);
   const dynamicGenderDistribution = [
     { name: "Nam", value: malePercentage, fill: "#3B82F6" },
-    { name: "Nu", value: femalePercentage, fill: "#EC4899" },
+    { name: "Nữ", value: femalePercentage, fill: "#EC4899" },
   ];
 
-  const tabSummaryCards = {
-    revenue: [
-      {
-        label: "Doanh thu",
-        value: formatCompactMoney(safeOverview.totalRevenue),
-        icon: DollarSign,
-        iconBg: "bg-blue-500",
-        deltaPositive: true,
-        loading: loadingOverview,
-      },
-      {
-        label: "Gói đăng ký",
-        value: formatCompactMoney(safeOverview.subscriptionRevenue),
-        icon: FileText,
-        iconBg: "bg-emerald-500",
-        deltaPositive: true,
-        loading: loadingOverview,
-      },
-      {
-        label: "Tiền phạt",
-        value: formatCompactMoney(safeOverview.fineRevenue),
-        icon: AlertCircle,
-        iconBg: "bg-red-500",
-        deltaPositive: false,
-        loading: loadingOverview,
-      },
-      {
-        label: "Doanh thu nam",
-        value: formatCompactMoney(safeOverview.totalRevenue),
-        icon: DollarSign,
-        iconBg: "bg-emerald-500",
-        deltaPositive: true,
-        loading: loadingOverview,
-      },
-    ],
-    users: [
-      {
-        label: "Nguoi dung hoat dong",
-        value: safeOverview.activeUsers,
-        icon: Users,
-        iconBg: "bg-emerald-500",
-        deltaPositive: true,
-        loading: loadingOverview,
-      },
-      {
-        label: "Tong tai khoan",
-        value: safeOverview.totalUsers,
-        icon: FileText,
-        iconBg: "bg-blue-500",
-        deltaPositive: Math.max(safeOverview.totalUsers - safeOverview.activeUsers, 0) === 0,
-        loading: loadingOverview,
-      },
-      {
-        label: "Tai khoan dang ky goi",
-        value: premiumBorrowers,
-        icon: FileText,
-        iconBg: "bg-purple-500",
-        deltaPositive: true,
-        loading: false,
-      },
-      {
-        label: "Tài khoản nợ phạt",
-        value: safeOverview.usersWithPendingFines,
-        icon: AlertCircle,
-        iconBg: "bg-red-500",
-        deltaPositive: safeOverview.usersWithPendingFines === 0,
-        loading: loadingOverview,
-      },
-    ],
-    books: [
-      {
-        label: "Sách nổi bật",
-        value: topBooks[0]?.borrows ?? 0,
-        icon: Book,
-        iconBg: "bg-blue-500",
-        deltaPositive: true,
-        loading: false,
-      },
-      {
-        label: "Sắp hết sách",
-        value: lowStockTitles,
-        icon: AlertCircle,
-        iconBg: "bg-red-500",
-        deltaPositive: lowStockTitles === 0,
-        loading: false,
-      },
-      {
-        label: "Hết sách",
-        value: outOfStockTitles,
-        icon: FileText,
-        iconBg: "bg-purple-500",
-        deltaPositive: outOfStockTitles === 0,
-        loading: false,
-      },
-    ],
-    loans: [
-      {
-        label: "Lượt mượn",
-        value: safeOverview.totalLoans,
-        icon: Book,
-        iconBg: "bg-amber-500",
-        deltaPositive: true,
-        loading: loadingOverview,
-      },
-      {
-        label: "Quá hạn",
-        value: overdueLoaners.length,
-        icon: AlertCircle,
-        iconBg: "bg-red-500",
-        deltaPositive: false,
-        loading: false,
-      },
-      {
-        label: "Đang mượn",
-        value: safeOverview.activeLoans,
-        icon: Book,
-        iconBg: "bg-blue-500",
-        deltaPositive: true,
-        loading: loadingOverview,
-      },
-      {
-        label: "Đúng hạn",
-        value: `${safeOverview.onTimeRate}%`,
-        icon: FileText,
-        iconBg: "bg-purple-500",
-        deltaPositive: safeOverview.onTimeRate >= 90,
-        loading: loadingOverview,
-      },
-    ],
-    fines: [
-      {
-        label: "Phiếu phạt",
-        value: safeOverview.totalFines,
-        icon: AlertCircle,
-        iconBg: "bg-red-500",
-        deltaPositive: false,
-        loading: loadingOverview,
-      },
-      {
-        label: "Người đang nợ",
-        value: safeOverview.usersWithPendingFines,
-        icon: Users,
-        iconBg: "bg-blue-500",
-        deltaPositive: false,
-        loading: loadingOverview,
-      },
-      {
-        label: "Tổng nợ",
-        value: formatCompactMoney(outstandingFines),
-        icon: DollarSign,
-        iconBg: "bg-amber-500",
-        deltaPositive: false,
-        loading: false,
-      },
-    ],
-    subscriptions: [
-      {
-        label: "Lượt đăng ký gói",
-        value: safeSubscriptionsReport.totalSubscriptions,
-        icon: Book,
-        iconBg: "bg-blue-500",
-        deltaPositive: true,
-        loading: loadingSubscriptionsReport,
-      },
-      {
-        label: "Gói đang ký hoạt động",
-        value: safeSubscriptionsReport.activeSubscriptions,
-        icon: FileText,
-        iconBg: "bg-purple-500",
-        deltaPositive: true,
-        loading: loadingSubscriptionsReport,
-      },
-      {
-        label: "Sắp hết hạn",
-        value: safeSubscriptionsReport.expiringSoonCount,
-        icon: AlertCircle,
-        iconBg: "bg-red-500",
-        deltaPositive: false,
-        loading: loadingSubscriptionsReport,
-      },
-      {
-        label: "Doanh thu gói",
-        value: formatCompactMoney(safeOverview.subscriptionRevenue),
-        icon: DollarSign,
-        iconBg: "bg-emerald-500",
-        deltaPositive: true,
-        loading: loadingSubscriptionsReport,
-      },
-    ],
-  };
+  const fallbackPlanDistribution = [
+    { name: "Premium", value: 60, fill: "#534AB7" },
+    { name: "Standard", value: 30, fill: "#378ADD" },
+    { name: "Basic", value: 10, fill: "#9ca3af" },
+  ];
 
-  const renderTabSummary = () => (
-    <div
-      className={`grid grid-cols-1 gap-4 md:grid-cols-2 ${
-        (tabSummaryCards[activeTab] ?? []).length >= 5 ? "xl:grid-cols-5" : "xl:grid-cols-4"
-      } mb-8`}
-    >
-      {(tabSummaryCards[activeTab] ?? []).map((card) => (
-        <KpiCard
-          key={card.label}
-          label={card.label}
-          value={card.value}
-          icon={card.icon}
-          iconBg={card.iconBg}
-          delta={card.delta}
-          deltaPositive={card.deltaPositive}
-          loading={card.loading}
-        />
-      ))}
-    </div>
-  );
+  // ── PDF Export: capture the ReportPreview already visible in modal ─────────
+  const handleExportConfirm = async () => {
+    setExportLoading(true);
+    try {
+      const [html2canvasModule, jsPDFModule] = await Promise.all([
+        import("html2canvas"),
+        import("jspdf"),
+      ]);
+      const html2canvas = html2canvasModule.default;
+      const { jsPDF } = jsPDFModule;
 
-  const renderRevenueTab = () => (
-  <div className="grid grid-cols-1 gap-5 xl:grid-cols-1">
-    <ChartCard
-      title="Doanh thu theo thang"
-      legend={[
-        { color: "#3B82F6", label: "Goi dang ky" },
-        { color: "#EF4444", label: "Tien phat" },
-      ]}
-      loading={loadingOverview}
-      height={300}
-    >
-      <BarChart data={monthlyRevenueData} barGap={4} barCategoryGap="30%">
-        <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
-        <XAxis
-          dataKey="month"
-          tick={{ fontSize: 11, fill: "#888780" }}
-          axisLine={false}
-          tickLine={false}
-        />
-        <YAxis
-          tick={{ fontSize: 11, fill: "#888780" }}
-          tickFormatter={(value) => `${(value / 1000000).toFixed(1)}M`}
-          axisLine={false}
-          tickLine={false}
-          width={40}
-        />
-        <Tooltip
-          content={<ChartTooltip />}
-          cursor={{ fill: "#f3f4f6", radius: 6 }}
-        />
-        <Bar dataKey="subscription" fill="#3B82F6" name="Doanh thu goi dang ky" radius={[6, 6, 0, 0]} maxBarSize={50} />
-        <Bar dataKey="fines" fill="#EF4444" name="Doanh thu tien phat" radius={[6, 6, 0, 0]} maxBarSize={50} />
-      </BarChart>
-    </ChartCard>
-  </div>
-);
+      // The ReportPreview inside the modal has id="report-print-content"
+      const el = document.getElementById("report-print-content");
+      if (!el) throw new Error("Không tìm thấy nội dung preview");
 
-  const renderUsersTab = () => (
-    <div className="space-y-5">
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-5">
-        <div className="xl:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-          <h3 className="text-sm font-semibold text-gray-900 mb-4">Ty le gioi tinh</h3>
-          <DonutWithLegend data={dynamicGenderDistribution} loading={loadingOverview} />
-        </div>
+      const canvas = await html2canvas(el, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: "#ffffff",
+      });
 
-        <div className="xl:col-span-3 bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="text-sm font-semibold text-gray-900">Top nguoi dung muon sach nhieu</h3>
-              <p className="text-xs text-gray-400 mt-1">Giu lai thong tin hien tai va dua vao tab de gon hon.</p>
-            </div>
-          </div>
-      <DataTable
-        loading={false}
-        columns={[
-          {
-            key: "rank",
-            label: "#",
-            render: (row) => (
-              <span className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-600 mx-auto">
-                {row.rank}
-              </span>
-            ),
-          },
-          { key: "name", label: "Nguoi dung", bold: true },
-          {
-            key: "total",
-            label: "Tong luot muon",
-            align: "right",
-            render: (row) => <span className="font-semibold text-blue-600">{row.total}</span>,
-          },
-          {
-            key: "onTime",
-            label: "Dung han",
-            align: "right",
-            render: (row) => (
-              <Badge color={parseInt(row.onTime, 10) >= 90 ? "green" : "amber"}>{row.onTime}</Badge>
-            ),
-          },
-          {
-            key: "plan",
-            label: "Goi",
-            render: (row) => (
-              <Badge color={row.plan === "Premium" ? "purple" : row.plan === "Standard" ? "blue" : "gray"}>
-                {row.plan}
-              </Badge>
-            ),
-          },
-        ]}
-        rows={dynamicTopBorrowers}
-      />
-        </div>
-      </div>
-    </div>
-  );
+      const imgData = canvas.toDataURL("image/jpeg", 0.95);
+      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
 
-  const renderBooksTab = () => (
-  <div className="grid grid-cols-1 gap-5 xl:grid-cols-5">
-    <div className="xl:col-span-2">
-      <ChartCard title="Thể loại được mượn nhiều" loading={false} height={280}>
-        <BarChart data={dynamicGenreChart} layout="vertical">
-          <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" horizontal={false} />
-          <XAxis type="number" tick={{ fontSize: 11 }} />
-          <YAxis dataKey="name" type="category" tick={{ fontSize: 11 }} width={72} />
-          <Tooltip content={<ChartTooltip />} />
-          <Bar dataKey="value" name="Lượt mượn" radius={[0, 4, 4, 0]}>
-            {dynamicGenreChart.map((item, index) => (
-              <Cell key={`${item.name}-${index}`} fill={COLORS[index % COLORS.length]} />
-            ))}
-          </Bar>
-        </BarChart>
-      </ChartCard>
-    </div>
+      const pdfWidth = 210;
+      const pageHeightMm = 297;
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      const pageHeightPx = (pageHeightMm / pdfWidth) * canvas.width;
 
-    <div className="xl:col-span-3 bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-      <h3 className="text-sm font-semibold text-gray-900 mb-4">
-        Top đầu sách được mượn nhiều
-      </h3>
+      if (pdfHeight <= pageHeightMm) {
+        pdf.addImage(imgData, "JPEG", 0, 0, pdfWidth, pdfHeight);
+      } else {
+        let yOffset = 0;
+        while (yOffset < canvas.height) {
+          const sliceH = Math.min(pageHeightPx, canvas.height - yOffset);
+          const sliceCanvas = document.createElement("canvas");
+          sliceCanvas.width = canvas.width;
+          sliceCanvas.height = sliceH;
+          const ctx = sliceCanvas.getContext("2d");
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+          ctx.drawImage(canvas, 0, yOffset, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
+          const sliceImg = sliceCanvas.toDataURL("image/jpeg", 0.95);
+          const slicePdfH = (sliceH * pdfWidth) / canvas.width;
+          if (yOffset > 0) pdf.addPage();
+          pdf.addImage(sliceImg, "JPEG", 0, 0, pdfWidth, slicePdfH);
+          yOffset += pageHeightPx;
+        }
+      }
 
-      {/* ---- Thay DataTable cũ bằng phần này ---- */}
-      {loadingTopBooks ? (
-        <div className="flex flex-col gap-3">
-          {Array(5).fill(0).map((_, i) => (
-            <div key={i} className="h-12 rounded-xl bg-gray-100 animate-pulse" />
-          ))}
-        </div>
-      ) : topBooksData.length === 0 ? (
-        <p className="text-xs text-gray-400 text-center py-8">Không có dữ liệu</p>
-      ) : (
-        <div>
-          {topBooksData.map((book, i) => (
-            <TopBookRow key={book.id ?? i} rank={i + 1} book={book} />
-          ))}
-        </div>
-      )}
-    </div>
-  </div>
-);
-
-  const renderLoansTab = () => (
-    <div className="space-y-5">
-      <ChartCard
-        title="Luot muon theo ngay trong tuan"
-        loading={false}
-        height={280}
-      >
-        <BarChart data={loanHeatmap} barGap={4}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
-          <XAxis
-            dataKey="day"
-            tick={{ fontSize: 11, fill: "#888780" }}
-            axisLine={false}
-            tickLine={false}
-          />
-          <YAxis
-            tick={{ fontSize: 11, fill: "#888780" }}
-            axisLine={false}
-            tickLine={false}
-            width={40}
-          />
-          <Tooltip
-            content={<ChartTooltip />}
-            cursor={{ fill: "#f3f4f6", radius: 6 }}
-          />
-          <Bar dataKey="count" fill="#378ADD" name="So luot muon" radius={[6, 6, 0, 0]} />
-        </BarChart>
-      </ChartCard>
-
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-        <div className="flex items-center justify-between mb-4 gap-3">
-          <h3 className="text-sm font-semibold text-gray-900">Muon gan day</h3>
-        </div>
-        <DataTable
-          loading={false}
-          columns={[
-            { key: "userName", label: "Nguoi muon", bold: true },
-            { key: "bookTitle", label: "Ten sach" },
-            { key: "authorName", label: "Tac gia" },
-            { key: "checkoutDate", label: "Ngay muon" },
-            {
-              key: "dueDate",
-              label: "Han tra",
-              render: (row) => {
-                const today = new Date();
-                const dueDate = new Date(row.dueDate);
-                const isOverdue = dueDate < today;
-                return (
-                  <span className={isOverdue ? "text-red-600 font-medium" : ""}>
-                    {row.dueDate}
-                  </span>
-                );
-              },
-            },
-            {
-              key: "status",
-              label: "Trạng thái",
-              render: (row) => {
-                const statusMap = {
-                  CHECK_OUT: { label: "Đang mượn", color: "blue" },
-                  OVERDUE: { label: "Quá hạn", color: "red" },
-                  SHIPPING: { label: "Đang vận chuyển", color: "amber" },
-                  DELIVERED: { label: "Đã giao", color: "green" },
-                };
-                const status = statusMap[row.status] || { label: row.status, color: "gray" };
-                return <Badge color={status.color}>{status.label}</Badge>;
-              },
-            },
-          ]}
-          rows={safeOverview.recentBorrows}
-          emptyText="Khong co du lieu muon gan day"
-        />
-      </div>
-
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-        <div className="flex items-center justify-between mb-4 gap-3">
-          <h3 className="text-sm font-semibold text-gray-900">Tra gan day</h3>
-        </div>
-        <DataTable
-          loading={false}
-          columns={[
-            { key: "userName", label: "Nguoi tra", bold: true },
-            { key: "bookTitle", label: "Ten sach" },
-            { key: "authorName", label: "Tac gia" },
-            { key: "checkoutDate", label: "Ngay muon" },
-            { key: "returnDate", label: "Ngay tra" },
-            {
-              key: "overdueDays",
-              label: "Qua han",
-              render: (row) =>
-                row.overdueDays > 0 ? (
-                  <Badge color="red">{row.overdueDays} ngay</Badge>
-                ) : (
-                  <Badge color="green">Dung han</Badge>
-                ),
-            },
-          ]}
-          rows={safeOverview.recentReturns}
-          emptyText="Khong co du lieu tra gan day"
-        />
-      </div>
-
-      
-    </div>
-  );
-
-const renderFinesTab = () => (
-  <div className="space-y-5">
-    <div className="grid grid-cols-1 gap-5 xl:grid-cols-5">
-      <div className="xl:col-span-3">
-        <ChartCard
-          title="Xu huong thu phat theo thang"
-          legend={[
-            { color: "#1D9E75", label: "Da thu" },
-            { color: "#E24B4A", label: "Con ton" },
-          ]}
-          loading={false}
-          height={260}
-        >
-          <BarChart data={finesTrend}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
-            <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-            <YAxis tick={{ fontSize: 11 }} tickFormatter={(value) => `${(value / 1000000).toFixed(1)}M`} />
-            <Tooltip content={<ChartTooltip />} />
-            <Bar dataKey="collected" fill="#1D9E75" name="Da thu" radius={[4, 4, 0, 0]} />
-            <Bar dataKey="pending" fill="#E24B4A" name="Con ton" radius={[4, 4, 0, 0]} />
-          </BarChart>
-        </ChartCard>
-      </div>
-
-      <div className="xl:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-        <h3 className="text-sm font-semibold text-gray-900 mb-4">Tỉ lệ lý do phạt</h3>
-        <DonutWithLegend data={fineReasons} loading={false} />
-      </div>
-    </div>
-
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-      <div className="flex items-center justify-between mb-4 gap-3">
-        <div>
-          <h3 className="text-sm font-semibold text-gray-900">Danh sach nguoi no phat nhieu</h3>
-        </div>
-      </div>
-      <DataTable
-        loading={loadingOverview}
-        columns={[
-          { key: "userName", label: "Nguoi no", bold: true },
-          {
-            key: "reason",
-            label: "Ly do",
-            render: (row) => (
-              <Badge color={row.reason === "Qua han" ? "red" : row.reason === "Hu sach" ? "amber" : "blue"}>
-                {row.reason || row.fineType || "—"}
-              </Badge>
-            ),
-          },
-          { key: "createdAt", label: "Tu ngay", render: (row) => new Date(row.createdAt).toLocaleDateString('vi-VN') },
-          {
-            key: "amount",
-            label: "So tien no",
-            align: "right",
-            render: (row) => <span className="font-bold text-red-600">{formatVND(row.amount)}</span>,
-          },
-        ]}
-        rows={safeOverview.topFineUsers || []}
-        emptyText="Khong co du lieu ve phat"
-      />
-    </div>
-  </div>
-);
-
-const renderSubscriptionsTab = () => (
-    <div className="space-y-5">
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-5">
-        <div className="xl:col-span-3">
-          <ChartCard
-            title="So luong dang ky goi theo thang"
-            legend={[
-              { color: "#378ADD", label: "Dang ky goi" },
-            ]}
-            loading={loadingSubscriptionsReport}
-          >
-            <BarChart data={safeSubscriptionsReport.monthlyStats}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
-              <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-              <YAxis tick={{ fontSize: 11 }} />
-              <Tooltip content={<ChartTooltip />} />
-              <Bar dataKey="newCount" fill="#378ADD" name="Dang ky goi" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ChartCard>
-        </div>
-        <div className="xl:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-          <h3 className="text-sm font-semibold text-gray-900 mb-4">Ty le dang ky theo loai goi</h3>
-          <DonutWithLegend data={safeSubscriptionsReport.planDistribution} loading={loadingSubscriptionsReport} />
-        </div>
-      </div>
-
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-        <div className="flex items-center justify-between mb-4 gap-3">
-          <div>
-            <h3 className="text-sm font-semibold text-gray-900">Danh sach goi sap het han</h3>
-          </div>
-          <button className="text-xs px-3 py-1.5 rounded-lg border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 transition flex items-center gap-1.5">
-            <Bell size={12} /> Nhac nho tat ca
-          </button>
-        </div>
-        <DataTable
-          loading={loadingSubscriptionsReport}
-          columns={[
-            { key: "name", label: "Ten nguoi dung", bold: true },
-            {
-              key: "plan",
-              label: "Goi",
-              render: (row) => (
-                <Badge color={row.plan === "Premium" ? "purple" : row.plan === "Standard" ? "blue" : "gray"}>
-                  {row.plan}
-                </Badge>
-              ),
-            },
-            { key: "expiry", label: "Ngay het han" },
-            {
-              key: "revenue",
-              label: "Gia gia han",
-              align: "right",
-              render: (row) => <span className="font-medium text-emerald-600">{formatVND(row.revenue)}</span>,
-            },
-          ]}
-          rows={safeSubscriptionsReport.expiringSoonSubscriptions}
-        />
-      </div>
-    </div>
-  );
-
-  const renderActiveTab = () => {
-    switch (activeTab) {
-      case "revenue":
-        return renderRevenueTab();
-      case "users":
-        return renderUsersTab();
-      case "books":
-        return renderBooksTab();
-      case "loans":
-        return renderLoansTab();
-      case "fines":
-        return renderFinesTab();
-      case "subscriptions":
-        return renderSubscriptionsTab();
-      default:
-        return null;
+      const now = new Date();
+      pdf.save(`bao_cao_thu_vien_${selectedYear}_${now.toLocaleDateString("vi-VN").replace(/\//g, "-")}.pdf`);
+      setShowExportModal(false);
+    } catch (err) {
+      console.error("PDF export error:", err);
+      alert(`Không thể xuất PDF: ${err.message}`);
+    } finally {
+      setExportLoading(false);
     }
   };
 
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <>
       <style>{`
-        @keyframes shimmer {
-          0% { background-position: 200% 0; }
-          100% { background-position: -200% 0; }
-        }
+        @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+        @keyframes fadeIn { from{opacity:0;transform:scale(0.97) translateY(10px)} to{opacity:1;transform:scale(1) translateY(0)} }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .animate-in { animation: fadeIn 0.22s cubic-bezier(0.16,1,0.3,1); }
       `}</style>
 
-      <div className="p-6 w-full bg-gray-50 min-h-screen">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-slate-950">Thống kê và báo cáo</h1>
-          
-        </div>
+      <ExportModal
+        isOpen={showExportModal}
+        onClose={() => !exportLoading && setShowExportModal(false)}
+        onConfirm={handleExportConfirm}
+        exportLoading={exportLoading}
+        selectedYear={selectedYear}
+        startDate={startDate}
+        endDate={endDate}
+        overview={safeOverview}
+        subscriptionsReport={safeSubscriptionsReport}
+        loanHeatmap={loanHeatmap}
+        fineReasonData={fineReasonData}
+        dynamicGenreChart={dynamicGenreChart}
+        malePercentage={malePercentage}
+        femalePercentage={femalePercentage}
+      />
 
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-2 mb-6 overflow-x-auto">
-          <div className="flex gap-2 min-w-max">
-            {REPORT_TABS.map((tab) => (
-              <TabButton
-                key={tab.id}
-                active={activeTab === tab.id}
-                onClick={() => setActiveTab(tab.id)}
-              >
-                {tab.label}
-              </TabButton>
-            ))}
-          </div>
+      <div className="p-6 w-full bg-gray-50 min-h-screen">
+        <div className="mb-6 flex items-center justify-between">
+          <h1 className="text-2xl font-bold text-slate-950">Thống kê và báo cáo</h1>
+          <button
+            onClick={() => setShowExportModal(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition text-sm font-medium"
+          >
+            <Download size={16} />Xuất PDF
+          </button>
         </div>
 
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3 mb-6">
           <div className="flex flex-wrap items-center gap-3">
-            <span className="text-xs text-gray-600 font-medium">Nam bao cao:</span>
+            <span className="text-xs text-gray-600 font-medium">Năm báo cáo:</span>
             <div className="flex gap-2">
               {AVAILABLE_YEARS.map((year) => (
                 <button
                   key={year}
                   onClick={() => handleYearChange(year)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-                    selectedYear === year
-                      ? "bg-slate-900 text-white"
-                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                  }`}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${selectedYear === year ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
                 >
                   {year}
                 </button>
               ))}
             </div>
-            <div className="text-xs text-slate-400 md:ml-auto">
-              Tu {startDate} den {endDate}
-            </div>
+            <div className="text-xs text-slate-400 md:ml-auto">Từ {startDate} đến {endDate}</div>
           </div>
-          {overviewError ? <p className="text-xs text-red-500 mt-3">{overviewError}</p> : null}
+          {overviewError && <p className="text-xs text-red-500 mt-3">{overviewError}</p>}
         </div>
 
-        {renderTabSummary()}
-        {renderActiveTab()}
+    
+        <div className="grid grid-cols-2 gap-4 xl:grid-cols-4 mb-8">
+          <KpiCard label="Tổng doanh thu" value={formatCompactMoney(safeOverview.totalRevenue)} icon={DollarSign} iconBg="bg-blue-500" loading={loadingOverview} />
+          <KpiCard label="Gói đăng ký" value={formatCompactMoney(safeOverview.subscriptionRevenue)} icon={FileText} iconBg="bg-emerald-500" loading={loadingOverview} />
+          <KpiCard label="Tiền phạt" value={formatCompactMoney(safeOverview.fineRevenue)} icon={AlertCircle} iconBg="bg-red-500" loading={loadingOverview} />
+          <KpiCard label="Gói đang hoạt động" value={safeSubscriptionsReport.activeSubscriptions} icon={Users} iconBg="bg-purple-500" loading={loadingSubscriptionsReport} />
+        </div>
+
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-3 mb-5">
+          <div className="xl:col-span-2">
+            <ChartCard
+              title="Doanh thu theo tháng"
+              legend={[{ color: "#3B82F6", label: "Gói đăng ký" }, { color: "#EF4444", label: "Tiền phạt" }]}
+              loading={loadingOverview}
+              height={280}
+            >
+              <AreaChart data={monthlyRevenueData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="gradSub" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.25} />
+                    <stop offset="95%" stopColor="#3B82F6" stopOpacity={0.03} />
+                  </linearGradient>
+                  <linearGradient id="gradFine" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#EF4444" stopOpacity={0.25} />
+                    <stop offset="95%" stopColor="#EF4444" stopOpacity={0.03} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
+                <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#888780" }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: "#888780" }} tickFormatter={(v) => `${(v / 1000000).toFixed(1)}M`} axisLine={false} tickLine={false} width={42} />
+                <Tooltip content={<ChartTooltip />} />
+                <Area type="monotone" dataKey="subscription" name="Gói đăng ký" stroke="#3B82F6" strokeWidth={2} fill="url(#gradSub)" dot={{ r: 3, fill: "#3B82F6", strokeWidth: 0 }} activeDot={{ r: 5 }} />
+                <Area type="monotone" dataKey="fines" name="Tiền phạt" stroke="#EF4444" strokeWidth={2} fill="url(#gradFine)" dot={{ r: 3, fill: "#EF4444", strokeWidth: 0 }} activeDot={{ r: 5 }} />
+              </AreaChart>
+            </ChartCard>
+          </div>
+          <ChartCard
+            title="Xu hướng thu phạt"
+            legend={[{ color: "#1D9E75", label: "Đã thu" }, { color: "#E24B4A", label: "Còn tồn" }]}
+            loading={false}
+            height={280}
+          >
+            <BarChart data={finesTrend}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
+              <XAxis dataKey="month" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${(v / 1000000).toFixed(1)}M`} axisLine={false} tickLine={false} width={40} />
+              <Tooltip content={<ChartTooltip />} />
+              <Bar dataKey="collected" fill="#1D9E75" name="Đã thu" radius={[4, 4, 0, 0]} maxBarSize={30} />
+              <Bar dataKey="pending" fill="#E24B4A" name="Còn tồn" radius={[4, 4, 0, 0]} maxBarSize={30} />
+            </BarChart>
+          </ChartCard>
+        </div>
+
+
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-2 mb-5">
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+            <h3 className="text-sm font-semibold text-gray-900 mb-4">Tỉ lệ mượn sách theo thể loại</h3>
+            <div style={{ width: "100%", height: 200 }}>
+              <ResponsiveContainer width="100%" height={200}>
+                <PieChart>
+                  <Pie data={dynamicGenreChart} cx="50%" cy="50%" innerRadius={60} outerRadius={90} dataKey="value" paddingAngle={2}>
+                    {dynamicGenreChart.map((_, i) => (<Cell key={i} fill={COLORS[i % COLORS.length]} />))}
+                  </Pie>
+                  <Tooltip formatter={(v, name) => [`${v} lượt`, name]} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-2 mt-3">
+              {(() => {
+                const total = dynamicGenreChart.reduce((s, d) => s + d.value, 0);
+                return dynamicGenreChart.map((item, i) => {
+                  const pct = item.percentage ?? (total > 0 ? Math.round((item.value / total) * 100) : 0);
+                  return (
+                    <div key={i} className="flex items-center gap-1.5 min-w-0">
+                      <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ background: COLORS[i % COLORS.length] }} />
+                      <span className="text-xs text-gray-600 truncate">{item.name}</span>
+                      <span className="text-xs font-semibold text-gray-800 ml-auto flex-shrink-0">{pct}%</span>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+          </div>
+          <div className="flex flex-col gap-5">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex-1">
+              <h3 className="text-sm font-semibold text-gray-900 mb-1">
+                Tỉ lệ giới tính người dùng
+                
+              </h3>
+              <DonutWithLegend data={dynamicGenderDistribution} loading={loadingOverview} height={220} />
+            </div>
+            <ChartCard title="Lượt mượn theo ngày trong tuần" loading={loadingHeatmap} height={150} className="flex-1">
+              <AreaChart data={loanHeatmap} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="gradDay" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#378ADD" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#378ADD" stopOpacity={0.03} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
+                <XAxis dataKey="day" tick={{ fontSize: 10, fill: "#888780" }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 10, fill: "#888780" }} axisLine={false} tickLine={false} width={32} />
+                <Tooltip content={<ChartTooltip />} />
+                <Area type="monotone" dataKey="count" name="Số lượt mượn" stroke="#378ADD" strokeWidth={2} fill="url(#gradDay)" dot={{ r: 3, fill: "#378ADD", strokeWidth: 0 }} activeDot={{ r: 5 }} />
+              </AreaChart>
+            </ChartCard>
+          </div>
+        </div>
+
+
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-3 mb-5">
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+            <h3 className="text-sm font-semibold text-gray-900 mb-4">Tỉ lệ lý do phạt</h3>
+            <DonutWithLegend data={fineReasonData} loading={loadingFineReasons} height={240} />
+          </div>
+          <ChartCard
+            title="Số lượng đăng ký gói theo tháng"
+            legend={[{ color: "#378ADD", label: "Đăng ký mới" }]}
+            loading={loadingSubscriptionsReport}
+            height={240}
+          >
+            <AreaChart data={safeSubscriptionsReport.monthlyStats} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+              <defs>
+                <linearGradient id="gradSubs" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#378ADD" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#378ADD" stopOpacity={0.03} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
+              <XAxis dataKey="month" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} width={36} />
+              <Tooltip content={<ChartTooltip />} />
+              <Area type="monotone" dataKey="newCount" name="Đăng ký mới" stroke="#378ADD" strokeWidth={2} fill="url(#gradSubs)" dot={{ r: 3, fill: "#378ADD", strokeWidth: 0 }} activeDot={{ r: 5 }} />
+            </AreaChart>
+          </ChartCard>
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+            <h3 className="text-sm font-semibold text-gray-900 mb-4">Tỉ lệ đăng ký theo loại gói</h3>
+            <DonutWithLegend
+              data={safeSubscriptionsReport.planDistribution?.length > 0 ? safeSubscriptionsReport.planDistribution : fallbackPlanDistribution}
+              loading={loadingSubscriptionsReport}
+              height={240}
+            />
+          </div>
+        </div>
       </div>
     </>
   );

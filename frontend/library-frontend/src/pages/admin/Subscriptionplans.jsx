@@ -157,7 +157,7 @@ function SubscriptionPlans() {
           <table className="w-full text-base">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-100">
-                {[ "Id", "Tên gói", "Mô tả", "Giá (đ)", "Thời hạn", "Số sách tối đa", "Trạng thái", "Hành động"].map(h => (
+                {[ "Id", "Tên gói", "Mô tả", "Giá ", "Thời hạn", "Số sách tối đa", "Trạng thái", "Hành động"].map(h => (
                   <th key={h} className="px-5 py-3.5 text-left text-sm font-semibold text-gray-900 uppercase tracking-wide">{h}</th>
                 ))}
               </tr>
@@ -199,11 +199,7 @@ function SubscriptionPlans() {
               ))}
             </tbody>
           </table>
-          {!loading && filtered.length > 0 && (
-            <div className="px-5 py-3 border-t border-gray-50 bg-gray-50/50">
-              <p className="text-xs text-gray-400">Hiển thị {filtered.length} / {plans.length} gói</p>
-            </div>
-          )}
+          
         </div>
       </div>
 

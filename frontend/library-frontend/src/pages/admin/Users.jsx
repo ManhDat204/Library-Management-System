@@ -92,7 +92,11 @@ function Users() {
       await fetchUsers();
       closeForm();
     } catch (err) {
-      showToast(err?.response?.data?.message || "Có lỗi xảy ra", "error");
+      if (err?.response?.status === 403) {
+      showToast("Chỉ có admin mới được thực hiện thao tác này", "error");
+      } else {
+        showToast(err?.response?.data?.message || "Có lỗi xảy ra", "error");
+      }
     } finally {
       setSubmitting(false);
     }
@@ -104,8 +108,12 @@ function Users() {
       await userService.deleteUser(confirm.id);
       showToast(`Đã xóa người dùng "${confirm.name}"`, "success");
       await fetchUsers();
-    } catch {
-      showToast("Xóa người dùng thất bại", "error");
+    } catch (err) {
+      if (err?.response?.status === 403) {
+      showToast("Chỉ có admin mới được thực hiện thao tác này", "error");
+      } else {
+        showToast(err?.response?.data?.message || "Xóa người dùng thất bại", "error");
+      }
     } finally {
       setConfirm(null);
     }

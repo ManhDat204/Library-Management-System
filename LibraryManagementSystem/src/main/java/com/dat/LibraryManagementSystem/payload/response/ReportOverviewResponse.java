@@ -30,6 +30,7 @@ public class ReportOverviewResponse {
     private Long maleUsersCount;
     private Long femaleUsersCount;
     private Long activeLoans;
+    private List<ReportLoanItemResponse> activeLoanItems;
     private List<ReportLoanItemResponse> recentBorrows;
     private List<ReportLoanItemResponse> recentReturns;
     private List<ReportTopFineUserResponse> topFineUsers;

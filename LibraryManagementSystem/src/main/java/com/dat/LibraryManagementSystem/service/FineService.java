@@ -43,4 +43,6 @@ public interface FineService  {
     Long getTotalPendingFines(Long userId);
 
     void deleteFine(Long id) throws Exception;
+
+    List<FineDTO> getFineTypeRatios();
 }

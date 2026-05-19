@@ -14,6 +14,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Map;
+
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/book-loans")
@@ -26,6 +30,15 @@ public class BookLoanController {
             @Valid @RequestBody CheckoutRequest checkoutRequest) throws Exception {
         BookLoanDTO bookLoan = bookLoanService.checkoutBook(checkoutRequest);
         return new ResponseEntity<>(bookLoan, HttpStatus.CREATED);
+    }
+    @GetMapping("/stats/loans-by-day")
+    public ResponseEntity<List<Map<String, Object>>> getLoansByDayOfWeek(
+            @RequestParam String startDate,
+            @RequestParam String endDate) {
+        return ResponseEntity.ok(bookLoanService.getLoansByDayOfWeek(
+                LocalDate.parse(startDate),
+                LocalDate.parse(endDate)
+        ));
     }
 
     @PostMapping("checkout/user/{userId}")

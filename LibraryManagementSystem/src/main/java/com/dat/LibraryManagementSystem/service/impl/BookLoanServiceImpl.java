@@ -32,10 +32,13 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.time.LocalDate;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 @Slf4j
 @Service
@@ -87,6 +90,9 @@ public class BookLoanServiceImpl implements BookLoanService {
         }
         if (book.getAvailableCopies() <= 0) {
             throw new BookException("Sách không có sẵn");
+        }
+        if (subscription == null) {
+            throw new Exception("Bạn cần đăng ký gói để mượn sách");
         }
         //kiểm tra ngươi dùng có đang mượn sách này hay không
         if (bookLoanRepository.hasActiveCheckout(userId, book.getId())) {
@@ -216,7 +222,7 @@ public class BookLoanServiceImpl implements BookLoanService {
     @Override
     public BookLoanDTO markDelivered(Long loanId) throws Exception {
         BookLoan bookLoan = bookLoanRepository.findById(loanId)
-                .orElseThrow(() -> new Exception("Không tìm thấy đơn mượn #" + loanId));
+                .orElseThrow(() -> new Exception("Không tìm thấy đơn hàng #" + loanId));
 
         if (bookLoan.getStatus() != BookLoanStatus.SHIPPING) {
             throw new BookException("Chỉ có thể xác nhận giao hàng thành công khi đơn đang ở trạng thái vận chuyển");
@@ -228,7 +234,7 @@ public class BookLoanServiceImpl implements BookLoanService {
                 : currentUser.getEmail();
 
         bookLoan.setStatus(BookLoanStatus.DELIVERED);
-        bookLoan.setNotes("Nhân viên xác nhận giao hàng thành công");
+        bookLoan.setNotes("Nhân viên đã giao hàng thành công");
         BookLoan saved = bookLoanRepository.save(bookLoan);
 
       
@@ -300,7 +306,7 @@ public class BookLoanServiceImpl implements BookLoanService {
     //
     // }
 
-    // XOÁ method checkInBook cũ, THAY bằng method này
+
     @Override
     public BookLoanDTO requestReturn(CheckInRequest checkInRequest) throws Exception {
         BookLoan bookLoan = bookLoanRepository.findById(checkInRequest.getBookLoanId())
@@ -314,7 +320,7 @@ public class BookLoanServiceImpl implements BookLoanService {
 
         // Chỉ đổi trạng thái, chưa xử lý gì thêm
         bookLoan.setStatus(BookLoanStatus.PENDING_RETURN);
-        bookLoan.setNotes("User yêu cầu trả sách, chờ admin duyệt");
+        bookLoan.setNotes("Người dùng yêu cầu trả sách, chờ admin duyệt");
 
         BookLoan saved = bookLoanRepository.save(bookLoan);
         return bookLoanMapper.toDTO(saved);
@@ -382,12 +388,12 @@ public class BookLoanServiceImpl implements BookLoanService {
             if (condition == BookLoanStatus.RETURNED) {
                 try {
                     walletService.deductBalance(bookLoan.getUser().getId(),
-                            new BigDecimal("30000"),
+                            new BigDecimal("20000"),
                             "Phí trả sách - " + bookLoan.getBook().getTitle());
-                    log.info("[WALLET] Đã trừ 30.000đ từ ví user {} khi trả sách '{}'",
+                    log.info("[WALLET] Da tru 20.000đ tu vi nguoi dung {} khi tra sach '{}'",
                             bookLoan.getUser().getId(), bookLoan.getBook().getTitle());
                 } catch (Exception e) {
-                    log.warn("[WALLET] Lỗi khi trừ phí trả sách: {}", e.getMessage());
+                    log.warn("[WALLET] Loi khi tru phi tra sach: {}", e.getMessage());
                 }
             }
         }
@@ -482,7 +488,7 @@ public class BookLoanServiceImpl implements BookLoanService {
                                 ⏰ Thời hạn lấy sách
                               </div>
                               <div style="font-size:0.88rem;color:#7c2d12;line-height:1.6;">
-                                Vui lòng đến thư viện trước <strong>%s</strong>.<br/>
+                                Nhanh chóng vào hệ thống đặt sách <strong>%s</strong>.<br/>
                                 Sau thời gian này, đặt trước sẽ bị huỷ tự động.
                               </div>
                             </div>
@@ -492,7 +498,7 @@ public class BookLoanServiceImpl implements BookLoanService {
                           <td style="background:#fafafa;border-top:1px solid rgba(0,0,0,0.06);
                                      padding:18px 40px;text-align:center;">
                             <p style="margin:0;color:#ccc;font-size:0.72rem;">
-                              © 2025 SáchHay · Email tự động, vui lòng không trả lời.
+                              Bookify · Email tự động, vui lòng không trả lời.
                             </p>
                           </td>
                         </tr>
@@ -531,8 +537,13 @@ public class BookLoanServiceImpl implements BookLoanService {
                 searchRequest.getSortBy(),
                 searchRequest.getSortDirection());
         Page<BookLoan> bookLoanPage;
-
-        if (searchRequest.getStartDate() != null && searchRequest.getEndDate() != null) {
+        if (searchRequest.getSearchTerm() != null && !searchRequest.getSearchTerm().trim().isEmpty()) {
+            bookLoanPage = bookLoanRepository.searchByKeyword(
+                    searchRequest.getSearchTerm().trim(),
+                    searchRequest.getStatus(),
+                    pageable
+            );
+        } else if (searchRequest.getStartDate() != null && searchRequest.getEndDate() != null) {
             if (searchRequest.getStatus() != null) {
                 // Có cả status + dateRange
                 bookLoanPage = bookLoanRepository.findBookLoansByDateRangeAndStatus(
@@ -568,7 +579,6 @@ public class BookLoanServiceImpl implements BookLoanService {
             // mac dinh tra ve tat ca loan
             bookLoanPage = bookLoanRepository.findAll(pageable);
         }
-        /// convert entities to dto and wrap in response obj
         return convertToPageResponse(bookLoanPage);
 
     }
@@ -691,7 +701,7 @@ public class BookLoanServiceImpl implements BookLoanService {
                           <td style="background:linear-gradient(135deg,#1a1a2e,#2d1b00);
                                      padding:32px 40px;text-align:center;">
                             <h1 style="margin:0;color:#f5f0e8;font-size:1.4rem;font-weight:800;">
-                              Sách<em style="color:#c8956c;">Hay</em>
+                              Book<em style="color:#c8956c;">ify</em>
                             </h1>
                           </td>
                         </tr>
@@ -719,7 +729,7 @@ public class BookLoanServiceImpl implements BookLoanService {
                           <td style="background:#fafafa;border-top:1px solid rgba(0,0,0,0.06);
                                      padding:18px 40px;text-align:center;">
                             <p style="margin:0;color:#ccc;font-size:0.72rem;">
-                              © 2025 SáchHay · Email tự động, vui lòng không trả lời.
+                              Bookify · Email tự động, vui lòng không trả lời.
                             </p>
                           </td>
                         </tr>
@@ -728,5 +738,31 @@ public class BookLoanServiceImpl implements BookLoanService {
                   </table>
                 </body></html>
                 """.formatted(userName, bookTitle, statusColor, statusText, fineBlock);
+    }
+
+    @Override
+    public List<Map<String, Object>> getLoansByDayOfWeek(LocalDate startDate, LocalDate endDate) {
+        List<Object[]> rows = bookLoanRepository.countLoanGroupByDayOfWeek(startDate, endDate);
+
+        Map<Integer, String> DAY_LABEL = Map.of(
+                1, "CN", 2, "Thứ 2", 3, "Thứ 3",
+                4, "Thứ 4", 5, "Thứ 5", 6, "Thứ 6", 7, "Thứ 7"
+        );
+
+        Map<Integer, Long> resultMap = rows.stream()
+                .collect(Collectors.toMap(
+                        row -> ((Number) row[0]).intValue(),
+                        row -> ((Number) row[1]).longValue()
+                ));
+
+        return IntStream.rangeClosed(1, 7)
+                .mapToObj(day -> {
+                    Map<String, Object> item = new LinkedHashMap<>();
+                    item.put("dayOfWeek", day);
+                    item.put("day", DAY_LABEL.get(day));
+                    item.put("count", resultMap.getOrDefault(day, 0L));
+                    return item;
+                })
+                .collect(Collectors.toList());
     }
 }

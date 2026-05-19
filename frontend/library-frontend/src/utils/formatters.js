@@ -8,6 +8,7 @@ export const formatAddress = (loan) => {
     fields.push(address.district || "");
     fields.push(address.province || "");
   } else {
+    fields.push(loan.street || "");
     fields.push(loan.ward || "");
     fields.push(loan.district || "");
     fields.push(loan.province || "");

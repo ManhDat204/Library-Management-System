@@ -19,8 +19,7 @@ function Pagination({ page, totalPages, onChange }) {
       <button
         onClick={() => onChange(page - 1)}
         disabled={page === 0}
-        className="px-2.5 py-1.5 rounded-lg text-xs border border-gray-200 disabled:opacity-40 hover:bg-white transition flex items-center gap-1"
-      >
+        className="px-2.5 py-1.5 rounded-lg text-xs border border-gray-200 disabled:opacity-40 hover:bg-white transition flex items-center gap-1">
         <ChevronLeft size={14} /> Trước
       </button>
 
@@ -37,8 +36,7 @@ function Pagination({ page, totalPages, onChange }) {
               p === page
                 ? "bg-sky-500 text-white shadow-sm"
                 : "border border-gray-200 hover:bg-white text-gray-600"
-            }`}
-          >
+            }`}>
             {p + 1}
           </button>
         )

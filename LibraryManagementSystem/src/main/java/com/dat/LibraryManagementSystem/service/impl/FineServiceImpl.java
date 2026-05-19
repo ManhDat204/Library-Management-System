@@ -223,5 +223,28 @@ public class FineServiceImpl implements FineService {
         fine.setDeletedAt(LocalDateTime.now());
         fineRepository.save(fine);
     }
+
+    @Override
+    public List<FineDTO> getFineTypeRatios() {
+        List<Object[]> rows = fineRepository.countGroupByFineType();
+
+        long total = rows.stream()
+                .mapToLong(row -> ((Number) row[1]).longValue())
+                .sum();
+
+        return rows.stream()
+                .map(row -> {
+                    FineType type = (FineType) row[0];
+                    long count = ((Number) row[1]).longValue();
+                    double percentage = total == 0 ? 0.0
+                            : Math.round((count * 100.0 / total) * 100.0) / 100.0;
+                    return FineDTO.builder()
+                            .fineType(type)
+                            .amount(count)
+                            .percentage(percentage)
+                            .build();
+                })
+                .collect(Collectors.toList());
+    }
 }
 

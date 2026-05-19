@@ -6,7 +6,7 @@ import com.dat.LibraryManagementSystem.model.BookLoan;
 import com.dat.LibraryManagementSystem.payload.dto.BookDTO;
 import com.dat.LibraryManagementSystem.repository.BookLoanRepository;
 import com.dat.LibraryManagementSystem.repository.BookRepository;
-import com.dat.LibraryManagementSystem.service.GeminiChatService;
+import com.dat.LibraryManagementSystem.service.ChatbotService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/ai")
 @CrossOrigin(origins = "http://localhost:5173")
-public class AIRecommendationController {
+public class ChatbotController {
 
     @Autowired
     private BookRepository bookRepository;
@@ -41,7 +41,7 @@ public class AIRecommendationController {
     private BookMapper bookMapper;
 
     @Autowired
-    private GeminiChatService geminiChatService;
+    private ChatbotService geminiChatService;
 
     @GetMapping("/recommend")
     public ResponseEntity<List<BookDTO>> recommendBooks(

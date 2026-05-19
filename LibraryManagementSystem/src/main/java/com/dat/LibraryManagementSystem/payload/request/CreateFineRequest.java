@@ -12,7 +12,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class CreateFineRequest {
-    @NotNull(message = "Ma sach la bat buoc")
+    @NotNull(message = "Ma sách la bat buoc")
     private Long bookLoanId;
 
     @NotNull(message = "Loai phat la bat buoc")

@@ -34,7 +34,6 @@ public class GenreServiceImpl implements GenreService {
 
     @Override
     public List<GenreDTO> getAllGenres() {
-        // FIXED: findAllByOrderByDisplayOrder → findAllByOrderByNameAsc
         return genreRepository.findAllByOrderByNameAsc().stream()
                 .map(genreMapper::toDTO)
                 .collect(Collectors.toList());
@@ -61,7 +60,7 @@ public class GenreServiceImpl implements GenreService {
     public void deleteGenre(Long genreId) throws GenreException {
         Genre existingGenre = genreRepository.findById(genreId)
                 .orElseThrow(() -> new GenreException("Thể loại không tồn tại"));
-        existingGenre.setActive(false);  // ✅ SOFT DELETE
+        existingGenre.setActive(false);
         genreRepository.save(existingGenre);
     }
 
@@ -133,9 +132,9 @@ public class GenreServiceImpl implements GenreService {
 
         Page<Genre> page;
         if (request.getSearchTerm() != null && !request.getSearchTerm().trim().isEmpty()) {
-            page = genreRepository.findByNameContainingIgnoreCase(request.getSearchTerm(), pageable);
+            page = genreRepository.findByNameContainingIgnoreCaseAndActiveTrue(request.getSearchTerm(), pageable);
         } else {
-            page = genreRepository.findAll(pageable);
+            page = genreRepository.findByActiveTrue(pageable);
         }
 
         return new PageResponse<>(

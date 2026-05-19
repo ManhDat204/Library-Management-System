@@ -3,4 +3,6 @@
 @tailwind utilities;
 
 
-
+body {
+  @apply font-sans text-gray-800;
+}

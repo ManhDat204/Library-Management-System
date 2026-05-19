@@ -14,9 +14,11 @@ import java.time.LocalDate;
 @AllArgsConstructor
 public class ReportLoanItemResponse {
     private Long id;
+    private Long bookId;
     private String userName;
     private String bookTitle;
     private String authorName;
+    private String coverImageUrl;
     private LocalDate checkoutDate;
     private LocalDate dueDate;
     private LocalDate returnDate;

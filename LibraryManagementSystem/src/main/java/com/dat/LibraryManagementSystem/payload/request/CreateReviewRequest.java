@@ -20,8 +20,8 @@ public class CreateReviewRequest {
 
 
     @NotNull(message = "rating la bat buoc")
-    @Min(value = 1, message = "Rating nho nhat la 1")
-    @Max(value = 5, message = "Rating lon nhat la 5")
+    @Min(value = 1, message = "Rating nhỏ nhat la 1")
+    @Max(value = 5, message = "Rating lớn nhat la 5")
     private Integer rating;
 
     @NotBlank(message = "Nhan xet la bat buoc")

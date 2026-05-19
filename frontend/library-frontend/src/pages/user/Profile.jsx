@@ -1,36 +1,10 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
-import { useAuth } from "../../context/AuthContext";// 1. Import useAuth
+import { useAuth } from "../../context/AuthContext";
+import Toast from "../../components/common/Toast";
+import '../../index.css';
+import api from "../../services/api";
 
-const api = axios.create({ baseURL: "http://localhost:8080/api" });
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
-
-// ─── TOAST (Giữ nguyên) ───────────────────────────────────────
-const Toast = ({ message, type = "success", onDone }) => {
-  useEffect(() => { const t = setTimeout(onDone, 3000); return () => clearTimeout(t); }, []);
-  return (
-    <div style={{
-      position: "fixed", bottom: "2rem", right: "2rem", zIndex: 9999,
-      background: "#1a1a1a", color: "#f5f0e8",
-      padding: "13px 20px", borderRadius: 14,
-      fontSize: "0.85rem", fontFamily: "'DM Sans',sans-serif",
-      boxShadow: "0 8px 32px rgba(0,0,0,0.2)",
-      display: "flex", alignItems: "center", gap: 10,
-      animation: "slideInToast 0.3s cubic-bezier(0.34,1.56,0.64,1)",
-    }}>
-      <span style={{ color: type === "success" ? "#22c55e" : "#e85d3f", fontSize: "1rem" }}>
-        {type === "success" ? "✓" : "✕"}
-      </span>
-      {message}
-    </div>
-  );
-};
-
-// ─── ADDRESS TAB & PASSWORD FIELD & PAYMENT (Giữ nguyên logic của Đạt) ────────
 const addrInputStyle = {
   width: "100%", padding: "9px 12px", borderRadius: 10, border: "1.5px solid rgba(0,0,0,0.08)",
   marginBottom: 8, fontSize: "0.85rem", outline: "none", boxSizing: "border-box", fontFamily: "inherit"
@@ -217,11 +191,11 @@ const PaymentHistoryTab = () => {
         <div key={i} style={{ background: "#fff", borderRadius: 14, border: "1px solid rgba(0,0,0,0.06)", padding: "1rem", display: "flex", justifyContent: "space-between" }}>
           <div>
             <div style={{ fontSize: "0.85rem", fontWeight: 700 }}>{p.description || "Giao dịch"}</div>
-            <div style={{ fontSize: "0.7rem", color: "#bbb" }}>{fmtDate(p.createdAt)}</div>
+            <div style={{ fontSize: "0.8rem"}}>{fmtDate(p.createdAt)}</div>
           </div>
           <div style={{ textAlign: "right" }}>
             <div style={{ fontWeight: 800 }}>{fmtMoney(p.amount)}</div>
-            <div style={{ fontSize: "0.6rem", color: (statusConfig[p.paymentStatus] || {}).color }}>{(statusConfig[p.paymentStatus] || {}).label}</div>
+            <div style={{ fontSize: "0.8rem", color: (statusConfig[p.paymentStatus] || {}).color }}>{(statusConfig[p.paymentStatus] || {}).label}</div>
           </div>
         </div>
       ))}
@@ -232,12 +206,12 @@ const PaymentHistoryTab = () => {
 const TABS = [
   { key: "info",    label: "Thông tin" },
   { key: "address", label: "Địa chỉ"   },
-  { key: "payment", label: "Thanh toán" },
+  { key: "payment", label: "Lịch sử giao dịch" },
 ];
 
-// ─── MAIN PROFILE (VỊ TRÍ CẦN SỬA) ──────────────────────────────
+
 export default function Profile() {
-  const { updateUser } = useAuth(); // 2. Lấy updateUser ra
+  const { updateUser } = useAuth(); 
   const [user, setUser]           = useState(null);
   const [loading, setLoading]     = useState(true);
   const [activeTab, setActiveTab] = useState("info");
@@ -261,7 +235,7 @@ export default function Profile() {
         password: "" 
       });
       
-      // Đồng bộ thông tin lần đầu vào Context (đề phòng)
+
       updateUser({ 
         fullName: res.data.fullName, 
         profileImage: res.data.profileImage 
@@ -358,94 +332,94 @@ export default function Profile() {
             </div>
 
             {/* Vùng chứa nội dung các Tab */}
-<div className="mt-4 min-h-[450px]"> 
-  {activeTab === "info" && (
-    <div className="animate-fadeUp">
-      <div className="bg-white rounded-[20px] p-6 border border-black/5 shadow-sm">
-        {/* Header Avatar */}
-        <div className="flex items-center gap-4 pb-5 mb-2 border-b border-black/5">
-          {user.profileImage ? (
-            <img src={user.profileImage} alt="avatar" className="w-[72px] h-[72px] rounded-full object-cover border-2 border-black/10 shrink-0" />
-          ) : (
-            <div className="w-[72px] h-[72px] rounded-full shrink-0 bg-zinc-900 text-white flex items-center justify-center text-2xl font-black uppercase font-display">
-              {user.fullName?.charAt(0)}
+            <div className="mt-4 min-h-[450px]"> 
+              {activeTab === "info" && (
+                <div className="animate-fadeUp">
+                  <div className="bg-white rounded-[20px] p-6 border border-black/5 shadow-sm">
+                    {/* Header Avatar */}
+                    <div className="flex items-center gap-4 pb-5 mb-2 border-b border-black/5">
+                      {user.profileImage ? (
+                        <img src={user.profileImage} alt="avatar" className="w-[72px] h-[72px] rounded-full object-cover border-2 border-black/10 shrink-0" />
+                      ) : (
+                        <div className="w-[72px] h-[72px] rounded-full shrink-0 bg-zinc-900 text-white flex items-center justify-center text-2xl font-black uppercase font-display">
+                          {user.fullName?.charAt(0)}
+                        </div>
+                      )}
+                      
+                      <label htmlFor="avatar-upload" className={`text-xs font-bold underline underline-offset-4 cursor-pointer hover:text-amber-600 transition-colors ${avatarUploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                        {avatarUploading ? "Đang tải lên..." : "Thay đổi"}
+                      </label>
+                      <input id="avatar-upload" type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} disabled={avatarUploading} />
+                    </div>
+
+                    {/* Form Fields */}
+                    {[
+                      { label: "Họ và tên", key: "fullName" },
+                      { label: "Email",     key: "email"    },
+                      { label: "Số điện thoại", key: "phone" },
+                    ].map(({ label, key }) => (
+                      <div key={key} className="flex items-center py-3 border-b border-black-[0.05]">
+                        <span className="w-[130px] text-sm text-zinc-500 font-semibold shrink-0">{label}</span>
+                        <input
+                          value={form[key]}
+                          onChange={e => { setForm({...form, [key]: e.target.value}); setDirty(true); }}
+                          className="flex-1 border-1.5 border-black/10 rounded-xl px-3 py-2 text-[0.88rem] outline-none bg-black/[0.02] focus:border-zinc-900 transition-all font-sans"
+                        />
+                      </div>
+                    ))}
+
+                    {/* Giới tính */}
+                    <div className="flex items-center py-3 border-b border-black-[0.05]">
+                      <span className="w-[130px] text-sm text-zinc-500 font-semibold shrink-0">Giới tính</span>
+                      <div className="flex gap-2">
+                        {[{ value: "MALE", label: "Nam" }, { value: "FEMALE", label: "Nữ" }].map(opt => (
+                          <button key={opt.value} type="button"
+                            onClick={() => { setForm({...form, gender: opt.value}); setDirty(true); }}
+                            className={`px-6 py-1.5 rounded-xl text-[0.82rem] font-bold border-1.5 transition-all
+                              ${form.gender === opt.value ? 'bg-zinc-900 border-zinc-900 text-white' : 'bg-transparent border-black/10 text-zinc-400'}`}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Mật khẩu */}
+                    <div className="flex items-center py-3">
+                      <span className="w-[130px] text-sm text-zinc-500 font-semibold shrink-0">Mật khẩu</span>
+                      <div className="flex-1">
+                        <PasswordField value={form.password} onChange={v => { setForm({...form, password: v}); setDirty(true); }} />
+                      </div>
+                    </div>
+
+                    {dirty && (
+                      <div className="flex justify-center mt-5 animate-fadeIn">
+                        <button onClick={handleSaveInfo} className="bg-zinc-900 text-white px-8 py-2.5 rounded-xl font-bold text-sm hover:-translate-y-1 transition-all shadow-lg shadow-zinc-200">
+                          Lưu thay đổi
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {activeTab === "address" && (
+                <div className="animate-fadeUp">
+                  <AddressTab userId={user.id} onToast={(m, t) => setToast({ message: m, type: t })} />
+                </div>
+              )}
+
+              {activeTab === "payment" && (
+                <div className="animate-fadeUp">
+                  <PaymentHistoryTab />
+                </div>
+              )}
             </div>
-          )}
-          
-          <label htmlFor="avatar-upload" className={`text-xs font-bold underline underline-offset-4 cursor-pointer hover:text-amber-600 transition-colors ${avatarUploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
-            {avatarUploading ? "Đang tải lên..." : "Thay đổi"}
-          </label>
-          <input id="avatar-upload" type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} disabled={avatarUploading} />
-        </div>
-
-        {/* Form Fields */}
-        {[
-          { label: "Họ và tên", key: "fullName" },
-          { label: "Email",     key: "email"    },
-          { label: "Số điện thoại", key: "phone" },
-        ].map(({ label, key }) => (
-          <div key={key} className="flex items-center py-3 border-b border-black-[0.05]">
-            <span className="w-[130px] text-sm text-zinc-500 font-semibold shrink-0">{label}</span>
-            <input
-              value={form[key]}
-              onChange={e => { setForm({...form, [key]: e.target.value}); setDirty(true); }}
-              className="flex-1 border-1.5 border-black/10 rounded-xl px-3 py-2 text-[0.88rem] outline-none bg-black/[0.02] focus:border-zinc-900 transition-all font-sans"
-            />
-          </div>
-        ))}
-
-        {/* Giới tính */}
-        <div className="flex items-center py-3 border-b border-black-[0.05]">
-          <span className="w-[130px] text-sm text-zinc-500 font-semibold shrink-0">Giới tính</span>
-          <div className="flex gap-2">
-            {[{ value: "MALE", label: "Nam" }, { value: "FEMALE", label: "Nữ" }].map(opt => (
-              <button key={opt.value} type="button"
-                onClick={() => { setForm({...form, gender: opt.value}); setDirty(true); }}
-                className={`px-6 py-1.5 rounded-xl text-[0.82rem] font-bold border-1.5 transition-all
-                  ${form.gender === opt.value ? 'bg-zinc-900 border-zinc-900 text-white' : 'bg-transparent border-black/10 text-zinc-400'}`}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Mật khẩu */}
-        <div className="flex items-center py-3">
-          <span className="w-[130px] text-sm text-zinc-500 font-semibold shrink-0">Mật khẩu</span>
-          <div className="flex-1">
-             <PasswordField value={form.password} onChange={v => { setForm({...form, password: v}); setDirty(true); }} />
-          </div>
-        </div>
-
-        {dirty && (
-          <div className="flex justify-center mt-5 animate-fadeIn">
-            <button onClick={handleSaveInfo} className="bg-zinc-900 text-white px-8 py-2.5 rounded-xl font-bold text-sm hover:-translate-y-1 transition-all shadow-lg shadow-zinc-200">
-              Lưu thay đổi
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
-  )}
-
-  {activeTab === "address" && (
-    <div className="animate-fadeUp">
-       <AddressTab userId={user.id} onToast={(m, t) => setToast({ message: m, type: t })} />
-    </div>
-  )}
-
-  {activeTab === "payment" && (
-    <div className="animate-fadeUp">
-       <PaymentHistoryTab />
-    </div>
-  )}
-</div>
           </div>
         )}
       </div>
 
-      {toast && <Toast message={toast.message} type={toast.type} onDone={() => setToast(null)} />}
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} position="bottom" timeout={3000} />}
     </>
   );
 }

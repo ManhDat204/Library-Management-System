@@ -1,17 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { Plus, Edit2, Trash2, Search, X, Tag, Loader2 } from "lucide-react";
-
-// Import common components
 import Toast from "../../components/common/Toast";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
 import Field from "../../components/common/Field";
 import Pagination from "../../components/common/Pagination";
-
-// Import services
 import { genreService } from "../../services/genreService";
-
-{/* <Pagination page={page} totalPages={totalPages} onChange={handlePageChange} /> */}
-
 
 const EMPTY = { code: "", name: "", description: "" };
 
@@ -52,7 +45,7 @@ function Genres() {
       const res = await genreService.searchGenres({
         page,
         size: 10,
-        sortBy: 'createdAt',
+        sortBy: 'id',
         sortDirection: 'DESC',
         ...(debouncedSearch.trim() && { searchTerm: debouncedSearch.trim() }),
       });

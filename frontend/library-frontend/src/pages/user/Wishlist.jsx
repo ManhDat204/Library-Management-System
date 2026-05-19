@@ -1,15 +1,11 @@
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import axios from "axios";
-import PageHeader from "../../components/PageHeader"; 
-
-// --- API CONFIG ---
-const api = axios.create({ baseURL: "http://localhost:8080/api" });
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
+import PageHeader from "../../components/common/PageHeader";
+import Toast from "../../components/common/Toast";
+import '../../index.css';
+import api from "../../services/api";
 
 const COVER_COLORS = [
   "from-slate-900 to-slate-700",
@@ -66,18 +62,6 @@ const SkeletonRow = ({ viewMode }) => (
   </div>
 );
 
-const Toast = ({ message, type = "success", onDone }) => {
-  useEffect(() => { const t = setTimeout(onDone, 2800); return () => clearTimeout(t); }, [onDone]);
-  return (
-    <div className="fixed bottom-8 right-8 z-[9999] flex items-center gap-3 bg-zinc-900 text-zinc-100 px-5 py-3 rounded-2xl shadow-2xl animate-in slide-in-from-bottom-5">
-      <span className={type === "error" ? "text-red-500" : "text-green-500"}>
-        {type === "error" ? "✕" : "✓"}
-      </span>
-      <span className="text-sm font-medium">{message}</span>
-    </div>
-  );
-};
-
 // --- MAIN PAGE ---
 export default function WishlistPage() {
   const navigate = useNavigate();
@@ -105,7 +89,7 @@ export default function WishlistPage() {
     try {
       await api.delete(`/wishlist/remove/${bookId}`);
       setItems(prev => prev.filter(i => i.book?.id !== bookId));
-      setToast({ message: "Đã xoá khỏi wishlist", type: "success" });
+      setToast({ message: "Đã xoá khỏi yêu thích", type: "success" });
     } catch (err) {
       setToast({ message: "Xoá thất bại", type: "error" });
     }
@@ -166,18 +150,20 @@ export default function WishlistPage() {
         </div>
       )}
 
-      {/* PAGINATION */}
       {totalPage > 1 && (
         <div className="mt-12 flex justify-center items-center gap-2">
-          <button disabled={page === 0} onClick={() => setPage(p => p - 1)} className="p-2 px-4 rounded-xl border border-zinc-200 text-sm disabled:opacity-30">← Trước</button>
+          <button disabled={page === 0} onClick={() => setPage(p => p - 1)} className="p-2 px-3 rounded-xl border border-zinc-200 text-sm disabled:opacity-30">
+            <ChevronLeft size={18} />
+            </button>
           {[...Array(totalPage)].map((_, i) => (
             <button key={i} onClick={() => setPage(i)} className={`w-10 h-10 rounded-xl text-sm font-bold transition-all ${page === i ? 'bg-zinc-900 text-white shadow-lg shadow-zinc-200' : 'hover:bg-zinc-100 text-zinc-600'}`}>{i + 1}</button>
           ))}
-          <button disabled={page >= totalPage - 1} onClick={() => setPage(p => p + 1)} className="p-2 px-4 rounded-xl border border-zinc-200 text-sm disabled:opacity-30">Tiếp →</button>
+          <button disabled={page >= totalPage - 1} onClick={() => setPage(p => p + 1)} className="p-2 px-3 rounded-xl border border-zinc-200 text-sm disabled:opacity-30">
+            <ChevronRight size={18} /></button>
         </div>
       )}
 
-      {toast && <Toast message={toast.message} type={toast.type} onDone={() => setToast(null)} />}
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} position="bottom" timeout={2800} />}
     </div>
   );
 }

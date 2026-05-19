@@ -1,14 +1,12 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
+import '../../index.css';
+import api from "../../services/api";
+import { LOAN_STATUS_MAP } from "../../constants/loanStatus";
 
-const api = axios.create({ baseURL: "http://localhost:8080/api" });
-api.interceptors.request.use((cfg) => {
-  const t = localStorage.getItem("token");
-  if (t) cfg.headers.Authorization = `Bearer ${t}`;
-  return cfg;
-});
 
+const STATUS_UI = LOAN_STATUS_MAP;
 const COVER_COLORS = ["#1a1a2e","#2d1b00","#0d2137","#1a2e1a","#2e1a2e","#2e2200","#1e2e20","#2e1e1e"];
 const FINE_LABEL = {
   OVERDUE:{ label:"Quá hạn" },
@@ -16,7 +14,7 @@ const FINE_LABEL = {
   LOST:   { label:"Mất sách" },
 };
 
-// ─── TRACKING 5 BƯỚC ─────────────────────────────────────────
+
 const STEPS = [
   { key:"CHECK_OUT",      icon:"📋", label:"Đặt đơn"      },
   { key:"SHIPPING",       icon:"🚚", label:"Vận chuyển"    },
@@ -30,17 +28,7 @@ const getStep = (s) => ({
   PENDING_RETURN:3, RETURNED:4, DAMAGED:4, LOST:4, CANCELLED:-1
 }[s]??0);
 
-const STATUS_UI = {
-  CHECK_OUT:      { label:"Chờ vận chuyển",   color:"text-blue-600",   bg:"bg-blue-50",   border:"border-blue-200",   dot:"bg-blue-500"   },
-  SHIPPING:       { label:"Đang vận chuyển",  color:"text-indigo-600", bg:"bg-indigo-50", border:"border-indigo-200",  dot:"bg-indigo-500" },
-  DELIVERED:      { label:"Đang mượn",        color:"text-teal-600",   bg:"bg-teal-50",   border:"border-teal-200",    dot:"bg-teal-500"   },
-  OVERDUE:        { label:"Quá hạn",          color:"text-red-600",    bg:"bg-red-50",    border:"border-red-200",     dot:"bg-red-500"    },
-  PENDING_RETURN: { label:"Chờ xác nhận trả", color:"text-amber-600",  bg:"bg-amber-50",  border:"border-amber-200",   dot:"bg-amber-400"  },
-  RETURNED:       { label:"Hoàn thành",       color:"text-green-700",  bg:"bg-green-50",  border:"border-green-200",   dot:"bg-green-500"  },
-  DAMAGED:        { label:"Hư hỏng",          color:"text-orange-600", bg:"bg-orange-50", border:"border-orange-200",  dot:"bg-orange-500" },
-  LOST:           { label:"Mất sách",         color:"text-gray-500",   bg:"bg-gray-100",  border:"border-gray-200",    dot:"bg-gray-400"   },
-  CANCELLED:      { label:"Đã huỷ",           color:"text-gray-400",   bg:"bg-gray-50",   border:"border-gray-100",    dot:"bg-gray-300"   },
-};
+
 
 const fmtDate = (d) => !d?"—":new Date(d).toLocaleDateString("vi-VN",{day:"2-digit",month:"2-digit",year:"numeric"});
 const getDiff = (due) => !due?null:Math.ceil((new Date(due)-new Date())/86400000);
@@ -107,7 +95,7 @@ const TrackingHorizontal = ({ loan }) => {
 
           return (
             <div key={s.key} className="flex items-start flex-1 min-w-0">
-              {/* Step column */}
+
               <div className="flex flex-col items-center flex-shrink-0" style={{width:40}}>
                 <div className={`w-9 h-9 rounded-full flex items-center justify-center text-base flex-shrink-0 transition-all ${circleCls}`}>
                   <span className={isFuture ? "opacity-25" : ""}>{s.icon}</span>
@@ -187,132 +175,162 @@ const ReturnModal = ({ loan, onClose, onSuccess }) => {
 };
 
 const ReviewModal = ({ loan, onClose, onSuccess }) => {
-  const [rating,setRating]   = useState(5);
-  const [comment,setComment] = useState("");
-  const [loading,setLoading] = useState(false);
-  const [error,setError]     = useState(null);
+  const [rating, setRating]   = useState(5);
+  const [comment, setComment] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError]     = useState(null);
   const LABELS = ["","Rất tệ","Tệ","Bình thường","Tốt","Xuất sắc"];
+
   const handleSubmit = async () => {
-    if (!comment.trim()||comment.trim().length<10){setError("Nhận xét phải ít nhất 10 ký tự.");return;}
+    if (!comment.trim() || comment.trim().length < 10) { setError("Nhận xét phải ít nhất 10 ký tự."); return; }
     try {
       setLoading(true); setError(null);
-      await api.post("/reviews",{bookId:Number(loan.bookId),rating,reviewText:comment.trim()});
+      await api.post("/reviews", { bookId: Number(loan.bookId), rating, reviewText: comment.trim() });
       onSuccess();
-    } catch(e){ setError(e.response?.data?.message||"Không thể gửi đánh giá."); }
+    } catch(e) { setError(e.response?.data?.message || "Không thể gửi đánh giá."); }
     finally { setLoading(false); }
   };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md shadow-2xl overflow-hidden" onClick={e=>e.stopPropagation()}>
-        <div className="px-6 py-5 border-b border-gray-100">
-          <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4 sm:hidden"/>
-          <h2 className="text-lg font-bold text-gray-900" style={{fontFamily:"'Playfair Display',serif"}}>Đánh giá sách</h2>
-          <p className="text-sm text-gray-400 mt-0.5 truncate">{loan.bookTitle}</p>
+      <div className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+
+        <div className="w-9 h-1 bg-gray-200 rounded-full mx-auto mt-3.5 sm:hidden"/>
+
+        <div className="px-5 pt-5 pb-1">
+          <h2 className="text-base font-bold text-gray-900">Đánh giá sách</h2>
         </div>
-        <div className="px-6 py-5 space-y-4">
+
+        <div className="px-5 pb-6 pt-4 space-y-4">
+          {/* Xếp hạng */}
           <div>
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Xếp hạng</p>
-            <div className="flex gap-1">{[1,2,3,4,5].map(s=>(
-              <button key={s} onClick={()=>setRating(s)} className={`text-3xl border-0 bg-transparent cursor-pointer hover:scale-110 transition-transform ${s<=rating?"text-yellow-400":"text-gray-200"}`}>★</button>
-            ))}</div>
-            <p className="text-xs text-amber-600 font-semibold mt-1">{LABELS[rating]}</p>
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2.5">Xếp hạng</p>
+            <div className="flex items-center gap-1">
+              {[1,2,3,4,5].map(s => (
+                <button key={s} onClick={() => setRating(s)}
+                  className="text-xl border-0 bg-transparent cursor-pointer hover:scale-110 transition-transform leading-none"
+                  style={{color: s <= rating ? "#EF9F27" : "#e5e7eb"}}>★</button>
+              ))}
+              <span className="ml-2 text-sm font-semibold text-amber-600">{LABELS[rating]}</span>
+            </div>
           </div>
-          <textarea value={comment} onChange={e=>setComment(e.target.value)} placeholder="Chia sẻ cảm nhận của bạn..." rows={4}
-            className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-700 resize-none outline-none focus:border-amber-400 transition-colors"/>
-          {error&&<div className="bg-red-50 border border-red-200 rounded-xl px-3 py-2 text-red-500 text-xs">⚠ {error}</div>}
-          <div className="flex gap-3">
-            <button onClick={onClose} className="flex-1 bg-gray-100 border-0 rounded-2xl py-3 text-sm text-gray-500 cursor-pointer hover:bg-gray-200">Huỷ</button>
+
+          <hr className="border-gray-100"/>
+
+          {/* Nhận xét */}
+          <div>
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2.5">Nhận xét của bạn</p>
+            <textarea value={comment} onChange={e => setComment(e.target.value)}
+              placeholder="Chia sẻ cảm nhận của bạn về cuốn sách..." rows={4}
+              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-700 bg-gray-50 resize-none outline-none focus:border-amber-400 focus:bg-white transition-colors leading-relaxed"/>
+            <p className="text-xs text-gray-300 mt-1.5">Tối thiểu 10 ký tự</p>
+          </div>
+
+          {error && (
+            <div className="bg-red-50 border border-red-100 rounded-xl px-3 py-2.5 text-red-500 text-xs">⚠ {error}</div>
+          )}
+
+          <div className="grid grid-cols-2 gap-2.5 pt-1">
+            <button onClick={onClose}
+              className="py-3.5 rounded-2xl bg-gray-100 border-0 text-sm font-semibold text-gray-500 cursor-pointer hover:bg-gray-200 transition-colors">
+              Huỷ
+            </button>
             <button onClick={handleSubmit} disabled={loading}
-              className={`flex-[2] border-0 rounded-2xl py-3 text-sm font-bold flex items-center justify-center gap-2 ${loading?"bg-gray-100 text-gray-400 cursor-not-allowed":"bg-gray-900 text-white cursor-pointer hover:bg-black"}`}>
-              {loading&&<span className="w-4 h-4 border-2 border-white border-opacity-30 border-t-white rounded-full animate-spin"/>}
+              className={`py-3.5 rounded-2xl border-0 text-sm font-bold flex items-center justify-center gap-2 transition-all
+                ${loading ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-gray-900 text-white cursor-pointer hover:bg-black"}`}>
+              {loading && <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/>}
               Gửi đánh giá
             </button>
           </div>
         </div>
+
       </div>
     </div>
   );
 };
 
-const FineModal = ({ fine, loan, onClose }) => {
+const FineModal = ({ fine, onClose }) => {
   const [loading, setLoading] = useState(false);
-  const [error, setError]     = useState(null);
+  const [error, setError] = useState(null);
 
   const handlePay = async () => {
     try {
       setLoading(true); setError(null);
-      const r1  = await api.post(`/fines/${fine.id}/pay`, { amount: fine.amount });
-      const pid = r1.data?.paymentId ?? r1.data?.data?.paymentId ?? r1.data?.id;
-      if (!pid) { setError("Không lấy được paymentId."); return; }
-      const r2  = await api.get(`/payments/${pid}/url`);
+
+      const r1 = await api.post(`/fines/${fine.id}/pay`, {
+        amount: fine.amount,
+      });
+
+      const pid =
+        r1.data?.paymentId ??
+        r1.data?.data?.paymentId ??
+        r1.data?.id;
+
+      if (!pid) {
+        setError("Không lấy được paymentId.");
+        return;
+      }
+
+      const r2 = await api.get(`/payments/${pid}/url`);
       const url = r2.data?.message;
-      if (url?.startsWith("http")) { window.location.href = url; return; }
+
+      if (url?.startsWith("http")) {
+        window.location.href = url;
+        return;
+      }
+
       setError("Không thể tạo link thanh toán.");
-    } catch(e) { setError(e.response?.data?.message || "Có lỗi xảy ra."); }
-    finally { setLoading(false); }
+    } catch (e) {
+      setError(e.response?.data?.message || "Có lỗi xảy ra.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
-        
-    
-        <div className="px-6 pt-6 pb-5 bg-white rounded-2xl shadow-sm">
-        <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-5 sm:hidden" />
+    <div
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl w-full max-w-sm p-6 shadow-xl text-center"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 className="text-lg font-bold text-gray-900 mb-2">Xác nhận thanh toán</h3>
 
-        <div className="text-center">
-          <p className="text-lg font-semibold text-gray-900 line-clamp-2">
-            {loan?.bookTitle}
-          </p>
-          {fine.reason && (
-            <p className="text-sm text-gray-500 mt-2 italic">
-              {fine.reason}
-            </p>
-          )}
-        </div>
-
-        <div className="my-5 border-t border-dashed border-gray-200" />
-
-        <div className="text-center bg-red-50 rounded-xl py-5">
-          <p className="text-xs uppercase tracking-wide text-gray-400 mb-2">
-            Số tiền phạt
-          </p>
-          <p
-            className="text-3xl sm:text-4xl font-bold text-red-500"
-            style={{ fontFamily: "'Playfair Display', serif" }}
-          >
-            {Number(fine.amount).toLocaleString("vi-VN")}₫
-          </p>
-        </div>
-      </div>
-
-   
+        <p className="text-sm text-gray-500 mb-4">
+          Bạn có muốn thanh toán khoản phạt này không?</p>
         {error && (
-          <div className="mx-6 mt-4 bg-red-50 border border-red-100 rounded-2xl px-4 py-3 text-red-500 text-xs">
+          <div className="bg-red-50 border border-red-100 rounded-lg px-3 py-2 text-red-500 text-xs mb-4">
             ⚠ {error}
           </div>
         )}
 
-
-        <div className="flex gap-3 p-5">
-          <button onClick={onClose}
-            className="flex-1 bg-gray-100 rounded-2xl py-3.5 text-sm font-semibold text-gray-500 hover:bg-gray-200 transition-colors border-0 cursor-pointer">
+        <div className="flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 py-2.5 rounded-lg bg-gray-100 text-gray-600 text-sm font-medium hover:bg-gray-200"
+          >
             Huỷ
           </button>
-          <button onClick={handlePay} disabled={loading}
-            className={`flex-[2] rounded-2xl py-3.5 text-sm font-bold flex items-center justify-center gap-2 border-0 cursor-pointer transition-all
-              ${loading ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-red-500 text-white hover:bg-red-600"}`}>
-            {loading && <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/>}
-            {loading ? "Đang xử lý..." : `Thanh toán ${Number(fine.amount).toLocaleString("vi-VN")}₫`}
+
+          <button
+            onClick={handlePay}
+            disabled={loading}
+            className={`flex-1 py-2.5 rounded-lg text-sm font-bold text-white transition-all ${
+              loading
+                ? "bg-gray-300 cursor-not-allowed"
+                : "bg-red-500 hover:bg-red-600"
+            }`}
+          >
+            {loading ? "Đang xử lý..." : "Thanh toán"}
           </button>
         </div>
-
       </div>
     </div>
   );
 };
 
-// ─── MAIN ─────────────────────────────────────────────────────
 export default function LoanDetailPage() {
   const { id: loanId } = useParams();
   const navigate   = useNavigate();
@@ -325,18 +343,23 @@ export default function LoanDetailPage() {
   const [visible,setVisible]   = useState(false);
   const [modal,setModal]       = useState(null);
   const [toast,setToast]       = useState(null);
+  const [subscription, setSubscription] = useState(null);
 
   useEffect(()=>{ setTimeout(()=>setVisible(true),60); loadData(); },[loanId]);
 
   const loadData = async () => {
     try {
-      setLoading(true); setError(null);
-      const [lRes,fRes] = await Promise.all([
+      setLoading(true);
+      setError(null);
+      const [lRes,fRes,subRes] = await Promise.all([
         api.get(`/book-loans/my/${loanId}`),
         api.get("/fines/my-fines").catch(()=>({data:[]})),
+        api.get("/subscriptions/user/active").catch(()=>null),
       ]);
       const loan = lRes.data;
       setLoan(loan);
+      setSubscription(subRes?.data || null);
+
       const f = (fRes.data||[]).find(f=>f.bookLoanId===Number(loanId)&&f.status==="PENDING"&&Number(f.amount)>0)||null;
       setFine(f);
 
@@ -405,24 +428,24 @@ export default function LoanDetailPage() {
         title:"Sách đang được giao đến bạn ",
         sub:`Hạn trả: ${fmtDate(loan.dueDate)}` }
     : isDelivered
-    ? { bg:`${diff!==null&&diff<=3?"bg-amber-50 border border-amber-100":"bg-teal-50 border border-teal-100"}`,
-        icon:diff!==null&&diff<=3?"⏰":"📖",
-        tc:diff!==null&&diff<=3?"text-amber-700":"text-teal-700",
-        sc:diff!==null&&diff<=3?"text-amber-500":"text-teal-500",
-        title:diff!==null&&diff<=3?`Sắp đến hạn còn ${diff} ngày`:"Đang trong thời hạn mượn",
-        sub:`Hạn trả: ${fmtDate(loan.dueDate)}` }
+    ? (diff !== null && diff < 0)
+      ? { bg:"bg-red-50 border border-red-100", tc:"text-red-700", sc:"text-red-400",
+          title:`Quá hạn ${Math.abs(diff)} ngày. Vui lòng trả sách ` }
+      : (diff !== null && diff <= 3)
+      ? { bg:"bg-amber-50 border border-amber-100", icon:"⏰", tc:"text-amber-700", sc:"text-amber-500",
+          title:`Sắp đến hạn còn ${diff} ngày` }
+      : { bg:"bg-teal-50 border border-teal-100", icon:"📖", tc:"text-teal-700", sc:"text-teal-500",
+          title:"Đang trong thời hạn mượn" }
     : status === "DAMAGED"
     ? { bg:"bg-orange-50 border border-orange-100", icon:"📕", tc:"text-orange-700", sc:"text-orange-500",
-        title:"Sách bị hư hỏng — vui lòng thanh toán tiền phạt",
+        title:"Sách bị hư hỏng. Vui lòng thanh toán tiền phạt",
          }
     : status === "LOST"
     ? { bg:"bg-gray-100 border border-gray-200", icon:"📭", tc:"text-gray-700", sc:"text-gray-500",
-        title:"Sách bị mất — vui lòng thanh toán tiền phạt",
+        title:"Sách bị mất. Vui lòng thanh toán tiền phạt",
          }
-    // ── GIỮ NGUYÊN FALLBACK ──
     : { bg:"bg-blue-50 border border-blue-100", icon:"📋", tc:"text-blue-700", sc:"text-blue-400",
-        title:"Đơn đã đặt, chờ thư viện xử lý",
-        sub:`Hạn trả dự kiến: ${fmtDate(loan.dueDate)}` };
+        title:"Đơn đã đặt, chờ thư viện xử lý" };
 
   return (
     <>
@@ -458,11 +481,10 @@ export default function LoanDetailPage() {
             </div>
           </div>
 
-          {/* 2. THÔNG TIN ĐƠN + SÁCH GỘP CHUNG */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
             {/* Header sách */}
             <div className="flex gap-4 p-5 border-b border-gray-50">
-              <div className="flex-shrink-0 w-16 rounded-xl overflow-hidden shadow-md" style={{aspectRatio:"3/4"}}>
+              <div className="flex-shrink-0 w-24 rounded-xl overflow-hidden shadow-md" style={{aspectRatio:"3/4"}}>
                 <Cover loan={loan}/>
               </div>
               <div className="flex-1 min-w-0 py-0.5">
@@ -470,24 +492,37 @@ export default function LoanDetailPage() {
                 <h2 className="text-base font-extrabold text-gray-900 leading-snug line-clamp-2" style={{fontFamily:"'Playfair Display',serif"}}>{loan.bookTitle||"—"}</h2>
                 {loan.bookAuthor&&<p className="text-xs text-gray-400 mt-1 italic">bởi {loan.bookAuthor}</p>}
               </div>
+              {isReturned && (
+              <div className="flex-shrink-0 flex items-start pt-0.5">
+                <button
+                  onClick={() => setModal("review")}
+                  className="bg-gray-900 text-white border-0 rounded-xl px-3 py-2 text-xs font-bold cursor-pointer hover:bg-black transition-colors flex items-center gap-1.5 shadow-sm"
+                >
+                  ★ Đánh giá
+                </button>
+              </div>
+            )}
             </div>
 
-            {/* Divider label */}
+
             <div className="px-5 py-3 border-b border-gray-50">
-              <p className="text-xs font-bold text-black-400 uppercase tracking-wider">Thông tin đơn mượn</p>
+              <p className="text-base font-bold text-black-400 uppercase tracking-wider">Thông tin đơn mượn</p>
             </div>
-
-            {/* Chi tiết rows */}
             <div className="px-5 py-1 divide-y divide-gray-50">
               {[
-                { label:"Mã đơn",           value:`#${loan.id}` },
-                { label:"Ngày đặt",          value:`${fmtDate(loan.checkoutDate)}${loan.checkoutTime ? ` ${loan.checkoutTime}` : ""}` },
-                { label:"Hạn trả",           value:fmtDate(loan.dueDate), highlight:isOverdue },
+                { label:"Mã đơn",value:`${loan.id}` },
+                { label:"Ngày đặt",value:`${fmtDate(loan.checkoutDate)}${loan.checkoutTime ? ` ${loan.checkoutTime}` : ""}` },
+                { label:"Hạn trả",           
+                  value: subscription && loan.checkoutDate
+                    ? fmtDate(new Date(loan.checkoutDate).getTime() + (subscription.maxDaysPerBook || 14) * 86400000)
+                    : fmtDate(loan.dueDate), 
+                  highlight:isOverdue 
+                },
                 loan.returnDate&&{ label:"Ngày trả thực tế", value:fmtDate(loan.returnDate) },
                 loan.notes&&{ label:"Ghi chú", value:loan.notes },
                 address&&{ label:"Địa chỉ", value:addrLine },
                 hasFine&&{ label:"Lý do ", value:fine.reason||FINE_LABEL[fine.fineType]?.label||fine.fineType, highlight:true },
-                hasFine&&{ label:"Tiền phạt",  value:`${Number(fine.amount).toLocaleString("vi-VN")}`, highlight:true },
+                hasFine&&{ label:"Tiền phạt",  value:`${Number(fine.amount).toLocaleString("vi-VN")} đ`, highlight:true },
                 hasFine&&{ label:"Trạng thái ", value:"Chưa thanh toán", highlight:true },
 
               ].filter(Boolean).map(row=>(
@@ -500,15 +535,15 @@ export default function LoanDetailPage() {
             </div>
           </div>
 
-
-          
-
-       
           <div className="flex gap-3 pb-8 pt-1">
-            <button onClick={()=>navigate("/home/my-loans")}
-              className="flex-1 bg-white border border-gray-200 text-gray-500 rounded-2xl py-4 text-sm font-semibold cursor-pointer hover:bg-gray-50 transition-colors">
+            {!isReturned &&  !hasFine && (
+            <button
+              onClick={() => navigate("/home/my-loans")}
+              className="flex-1 bg-white border border-gray-200 text-gray-500 rounded-2xl py-4 text-sm font-semibold cursor-pointer hover:bg-gray-50 transition-colors"
+            >
               Quay lại
             </button>
+          )}
 
             {isCheckOut&&(
               <div className="flex-1 bg-gray-100 border border-gray-200 text-gray-400 rounded-2xl py-4 text-sm font-semibold text-center flex items-center justify-center">
@@ -527,14 +562,7 @@ export default function LoanDetailPage() {
                 Chờ xác nhận
               </div>
             )}
-            {isReturned&&(
-              <button onClick={()=>setModal("review")}
-                className="flex-1 bg-gray-900 text-white border-0 rounded-2xl py-4 text-sm font-bold cursor-pointer hover:bg-black transition-colors flex items-center justify-center gap-2 shadow-md">
-                Đánh giá
-              </button>
-            )}
 
-            {/* ── THÊM NÚT THANH TOÁN VÀO ĐÂY ── */}
             {hasFine&&(
               <button onClick={()=>setModal("fine")}
                 className="flex-1 bg-red-600 text-white border-0 rounded-2xl py-4 text-sm font-bold cursor-pointer hover:bg-red-700 transition-colors flex items-center justify-center gap-2 shadow-md">

@@ -63,11 +63,8 @@ public class ReservationServiceImpl implements ReservationService {
         if (alreadyHasLoan){
             throw new Exception("Bạn đang mượn sách này rồi ");
         }
-
-        // kiem tra user ton tai
         User user = userService.getCurrentUser();
 
-        // kiem tra book ton tai
         Book book = bookRepository.findById(reservationRequest.getBookId())
                 .orElseThrow(()-> new Exception("Sách không tồn tại")
         );
@@ -121,8 +118,6 @@ public class ReservationServiceImpl implements ReservationService {
         reservation.setCanceledAt(LocalDateTime.now());
         Reservation savedReservation = reservationRepository.save(reservation);
 
-//        updateQueuePossitions(reservation.getUser().getId());
-//        longer.info("Dat truoc da bi huy boi user", reservationId, currentUser.getId());
 
         return reservationMapper.toDTO(savedReservation);
     }
@@ -266,7 +261,7 @@ public class ReservationServiceImpl implements ReservationService {
                       <td style="background:#fafafa;border-top:1px solid rgba(0,0,0,0.06);
                                  padding:18px 40px;text-align:center;">
                         <p style="margin:0;color:#ccc;font-size:0.72rem;">
-                          © 2025 SáchHay · Email tự động, vui lòng không trả lời.
+                          Bookify · Email tự động, vui lòng không trả lời.
                         </p>
                       </td>
                     </tr>

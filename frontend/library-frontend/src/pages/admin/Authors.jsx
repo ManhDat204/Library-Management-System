@@ -1,13 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { Plus, Edit2, Trash2, Search, X, User, Loader2 } from "lucide-react";
-
-// Import common components
 import Toast from "../../components/common/Toast";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
 import Field from "../../components/common/Field";
 import Pagination from "../../components/common/Pagination";
-
-// Import services
 import { authorService } from "../../services/authorService";
 
 const EMPTY = { authorName: "", nationality: "", biography: "" };
@@ -50,7 +46,7 @@ function Authors() {
         page,
         size: 10,
         sortBy: "id",
-        sortDirection: "ASC"
+        sortDirection: "DESC"
       });
       setAuthors(res.data.content || []);
       setTotalPages(res.data.totalPage || 0);

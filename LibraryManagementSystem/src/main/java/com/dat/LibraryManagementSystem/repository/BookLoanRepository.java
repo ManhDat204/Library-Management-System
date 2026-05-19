@@ -33,6 +33,17 @@ public interface BookLoanRepository extends JpaRepository<BookLoan, Long> {
                         @Param("status") BookLoanStatus status,
                         Pageable pageable);
 
+        @Query("SELECT bl FROM BookLoan bl " +
+                "WHERE (:searchTerm IS NULL OR " +
+                "LOWER(bl.user.fullName) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+                "LOWER(bl.book.title) LIKE LOWER(CONCAT('%', :searchTerm, '%'))) " +
+                "AND (:status IS NULL OR bl.status = :status)")
+        Page<BookLoan> searchByKeyword(
+                @Param("searchTerm") String searchTerm,
+                @Param("status") BookLoanStatus status,
+                Pageable pageable);
+
+
         @Query("select case when count(bl) > 0 then true else false end from BookLoan bl " +
                         " where bl.user.id = :userId and bl.book.id = :bookId " +
                         " and bl.status NOT IN ('RETURNED','CANCELLED','DAMAGED','LOST')")
@@ -63,9 +74,9 @@ public interface BookLoanRepository extends JpaRepository<BookLoan, Long> {
                         "GROUP BY bl.book.id ORDER BY COUNT(bl.id) DESC")
         List<Object[]> countLoanGroupByBook(Pageable pageable);
 
-        @Query("SELECT b.genre.id, COUNT(bl.id) FROM BookLoan bl JOIN bl.book b " +
-                        "WHERE b.active = true AND b.genre.active = true GROUP BY b.genre.id ORDER BY COUNT(bl.id) DESC")
-        List<Object[]> countLoanGroupByGenre(Pageable pageable);
+        @Query("SELECT bl.book.genre.id, COUNT(bl.id) FROM BookLoan bl " +
+                "WHERE bl.book.genre IS NOT NULL GROUP BY bl.book.genre.id")
+        List<Object[]> countLoanGroupByGenre();
 
         @Query("SELECT COUNT(bl) FROM BookLoan bl WHERE bl.checkoutDate BETWEEN :startDate AND :endDate")
         long countByCheckoutDateRange(
@@ -84,6 +95,10 @@ public interface BookLoanRepository extends JpaRepository<BookLoan, Long> {
         @Query("SELECT COUNT(bl) FROM BookLoan bl WHERE bl.status IN ('CHECK_OUT', 'OVERDUE', 'SHIPPING', 'DELIVERED')")
         long countActiveLoans();
 
+        @Query("SELECT bl FROM BookLoan bl WHERE bl.status IN ('CHECK_OUT', 'OVERDUE', 'SHIPPING', 'DELIVERED') " +
+                        "ORDER BY bl.checkoutDate DESC, bl.createdAt DESC")
+        Page<BookLoan> findActiveLoans(Pageable pageable);
+
         @Query("SELECT bl FROM BookLoan bl ORDER BY bl.checkoutDate DESC")
         Page<BookLoan> findRecentCheckouts(Pageable pageable);
 
@@ -96,4 +111,11 @@ public interface BookLoanRepository extends JpaRepository<BookLoan, Long> {
 
         @Query("SELECT bl FROM BookLoan bl WHERE bl.user.id = :userId")
         List<BookLoan> findAllByUserId(@Param("userId") Long userId);
+
+        @Query("SELECT FUNCTION('DAYOFWEEK', bl.checkoutDate), COUNT(bl) " +
+                "FROM BookLoan bl WHERE bl.checkoutDate BETWEEN :startDate AND :endDate " +
+                "GROUP BY FUNCTION('DAYOFWEEK', bl.checkoutDate)")
+        List<Object[]> countLoanGroupByDayOfWeek(
+                @Param("startDate") LocalDate startDate,
+                @Param("endDate") LocalDate endDate);
 }

@@ -4,24 +4,21 @@ import {
   ChevronLeft, ChevronRight, Filter, X, AlertCircle,
   Clock, DollarSign, Loader2, Trash2
 } from "lucide-react";
-
-// Import common components
 import Toast from "../../components/common/Toast";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
-
-// Import services
 import { fineService } from "../../services/fineService";
 
 
+
+
 const STATUS_META = {
-  PENDING: { label: "Chưa thanh toán", color: " text-amber-700 border-amber-200",       icon: Clock },
-  PAID:    { label: "Đã thanh toán",   color: "text-emerald-700 border-emerald-200", icon: CheckCircle },
-  WAIVED:  { label: "Đã miễn phí",     color: " text-sky-700 border-sky-200",             icon: Ban },
+  PENDING: { label: "Chưa thanh toán", color: " text-amber-700 ",       icon: Clock },
+  PAID:    { label: "Đã thanh toán",   color: "text-emerald-700", icon: CheckCircle },
+  WAIVED:  { label: "Đã miễn phí",     color: " text-sky-700 ",             icon: Ban },
 };
 
 const TYPE_META = {
   OVERDUE:    { label: "Quá hạn",     color: "bg-red-50 text-red-600" },
-
   LOST:       { label: "Mất sách",    color: "bg-purple-50 text-purple-600" },
   DAMAGE:     { label: "Hư hỏng",     color: "bg-pink-50 text-pink-600" },
 };
@@ -30,11 +27,11 @@ const fmt     = (n) => n != null ? new Intl.NumberFormat("vi-VN").format(n) + "�
 const fmtDate = (d) => d ? new Date(d).toLocaleString("vi-VN", { dateStyle: "short", timeStyle: "short" }) : "—";
 
 function StatusBadge({ status }) {
-  const m = STATUS_META[status] || { label: status, color: "bg-gray-100 text-gray-600 border-gray-200", icon: AlertCircle };
+  const m = STATUS_META[status] || { label: status || "-", color: "text-gray-500 border-gray-200", icon: AlertCircle };
   const Icon = m.icon;
   return (
-    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border ${m.color}`}>
-      <Icon size={11} />
+    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-sm font-medium  ${m.color}`}>
+
       {m.label}
     </span>
   );
@@ -42,9 +39,9 @@ function StatusBadge({ status }) {
 
 
 function TypeBadge({ type }) {
-  const m = TYPE_META[type] || { label: type, color: "bg-gray-50 text-gray-500" };
+  const m = TYPE_META[type] || { label: "Không xác định", color: "bg-gray-50 text-gray-400" };
   return (
-    <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${m.color}`}>
+    <span className={`inline-flex px-2 py-0.5 rounded text-sm font-medium ${m.color}`}>
       {m.label}
     </span>
   );
@@ -146,7 +143,7 @@ function WaiveModal({ fine, onClose, onSuccess, showToast }) {
           className="px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-sm font-medium transition flex items-center gap-2 disabled:opacity-60"
         >
           {loading && <Loader2 size={14} className="animate-spin" />}
-          Xác nhận miễn phí
+          Xác nhận
         </button>
       </div>
     </Modal>
@@ -197,7 +194,7 @@ function PayModal({ fine, onClose, onSuccess, showToast }) {
           className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium transition flex items-center gap-2 disabled:opacity-60"
         >
           {loading && <Loader2 size={14} className="animate-spin" />}
-          Xác nhận thanh toán
+          Xác nhận 
         </button>
       </div>
     </Modal>
@@ -210,19 +207,13 @@ function Fines() {
   const [loading,      setLoading]      = useState(false);
   const [error,        setError]        = useState("");
   const [toast,        setToast]        = useState(null);
-
-  // pagination
   const [page,       setPage]       = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const PAGE_SIZE = 10;
-
-  // filters
   const [search,       setSearch]       = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [filterType,   setFilterType]   = useState("");
   const [showFilter,   setShowFilter]   = useState(false);
-
-  // modals
   const [detailFine,    setDetailFine]    = useState(null);
   const [waivingFine,   setWaivingFine]   = useState(null);
   const [payingFine,    setPayingFine]    = useState(null);
@@ -252,7 +243,6 @@ function Fines() {
 
   useEffect(() => { fetchFines(page); }, [page, filterStatus, filterType]);
 
-  // ── search (client-side) ──────────────────────────────────────────────────
 
   const displayed = fines.filter((f) => {
     if (!search.trim()) return true;
@@ -265,7 +255,6 @@ function Fines() {
   });
 
   
-  // ── handlers ──────────────────────────────────────────────────────────────
 
   const handleViewDetail = async (id) => {
     setLoadingDetail(id);
@@ -420,14 +409,14 @@ function Fines() {
           )}
         </div>
 
-        {/* Error */}
+
         {error && (
           <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 mb-4 text-sm">
             <AlertCircle size={16} /> {error}
           </div>
         )}
 
-        {/* Table */}
+  
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -459,7 +448,7 @@ function Fines() {
                     <td style={{ padding: "16px 20px", fontWeight: 600, fontSize: 16, color: "#000000" }}>{fine.userName || "—"}</td>
                     <td style={{ padding: "16px 20px", color: "#000000", fontSize: 16, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={fine.bookTitle}>{fine.bookTitle || "—"}</td>
                     <td style={{ padding: "16px 20px" }}><TypeBadge type={fine.fineType} /></td>
-                    <td style={{ padding: "16px 20px", fontWeight: 700, color: "#000000", fontSize: 16, whiteSpace: "nowrap" }}>{fmt(fine.amount)}</td>
+                    <td style={{ padding: "16px 20px", color: "#000000", fontSize: 16, whiteSpace: "nowrap" }}>{fmt(fine.amount)}</td>
                     <td style={{ padding: "16px 20px" }}><StatusBadge status={fine.status} /></td>
                     <td style={{ padding: "16px 20px", color: "#000000", fontSize: 14, whiteSpace: "nowrap" }}>{fmtDate(fine.createdAt)}</td>
                     <td style={{ padding: "16px 20px" }}>
@@ -501,7 +490,6 @@ function Fines() {
             </table>
           </div>
 
-          {/* Pagination */}
           {totalPages > 1 && (
             <div className="flex items-center justify-between px-5 py-4 border-t border-gray-100 bg-gray-50/50">
               <p className="text-sm text-gray-500">Trang {page + 1} / {totalPages}</p>
@@ -530,7 +518,7 @@ function Fines() {
         </div>
       </div>
 
-      {/* Modals */}
+
       {detailFine  && <DetailModal fine={detailFine}  onClose={() => setDetailFine(null)} />}
       {waivingFine && <WaiveModal  fine={waivingFine} onClose={() => setWaivingFine(null)} onSuccess={handleWaiveSuccess} showToast={showToast} />}
       {payingFine  && <PayModal    fine={payingFine}  onClose={() => setPayingFine(null)}  onSuccess={handlePaySuccess}   showToast={showToast} />}

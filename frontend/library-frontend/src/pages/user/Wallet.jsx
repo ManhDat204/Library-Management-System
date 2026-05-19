@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import axios from "axios";
+import Toast from "../../components/common/Toast";
+import '../../index.css';
 
-// ─── API CONFIG ────────────────────────────────────────────────
+
 const api = axios.create({
   baseURL: "http://localhost:8080/api",
   headers: {
@@ -10,14 +12,13 @@ const api = axios.create({
   },
 });
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
+  const token = sessionStorage.getItem("token");
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
 
-// ─── CONSTANTS ─────────────────────────────────────────────────
-const PRESETS = [50000, 100000, 200000, 500000];
 
+const PRESETS = [50000, 100000, 200000, 500000];
 const TX_STYLE = {
   DEPOSIT:        { label: "Nạp tiền",  color: "text-emerald-600" },
   WALLET_DEPOSIT: { label: "Nạp tiền",  color: "text-emerald-600" },
@@ -41,21 +42,6 @@ const fmtDate = (iso) => {
   });
 };
 
-// ─── TOAST ─────────────────────────────────────────────────────
-const Toast = ({ message, type, onDone }) => {
-  useEffect(() => {
-    const t = setTimeout(onDone, 2500);
-    return () => clearTimeout(t);
-  }, [onDone]);
-  return (
-    <div className="fixed bottom-8 right-8 z-50 flex items-center gap-3 bg-zinc-900 text-zinc-100 px-5 py-3 rounded-2xl shadow-2xl">
-      <span className={type === "error" ? "text-red-400" : "text-emerald-400"}>
-        {type === "error" ? "✕" : "✓"}
-      </span>
-      <span className="text-sm font-medium">{message}</span>
-    </div>
-  );
-};
 
 // ─── SKELETON ──────────────────────────────────────────────────
 const SkeletonRow = () => (
@@ -172,17 +158,17 @@ export default function WalletPage() {
 
       {/* Balance */}
       <div className="rounded-2xl border border-zinc-100 bg-white px-6 py-5 mb-6 flex items-center justify-between shadow-sm">
-        <p className="text-sm text-zinc-400">Số dư</p>
+        <p className="text-xl font-bold text-zinc-900">Số dư</p>
         {loadingWallet
           ? <div className="h-7 w-32 bg-zinc-100 rounded-lg animate-pulse" />
-          : <p className="text-2xl font-bold text-zinc-900"
+          : <p className="text-xl font-bold text-zinc-900"
               style={{ fontFamily: "'Playfair Display', serif" }}>
               {fmt(balance)}
             </p>
         }
       </div>
 
-      {/* Deposit */}
+
       <div className="rounded-2xl border border-zinc-100 bg-white p-6 mb-6 shadow-sm">
         <p className="text-xs font-bold uppercase tracking-widest text-zinc-400 mb-4">Nạp tiền</p>
 
@@ -299,7 +285,7 @@ export default function WalletPage() {
       )}
 
       {toast && (
-        <Toast message={toast.message} type={toast.type} onDone={() => setToast(null)} />
+        <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} position="bottom" timeout={2500} />
       )}
 
       <style>{`

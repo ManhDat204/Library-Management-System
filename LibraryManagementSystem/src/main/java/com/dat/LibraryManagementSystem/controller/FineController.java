@@ -47,7 +47,10 @@ public class FineController {
         return fineService.payFine(id, amount);
     }
 
-    // ---- admin endpoints ------------------------------------------------
+    @GetMapping("/stats/type-ratio")
+    public ResponseEntity<List<FineDTO>> getFineTypeRatios() {
+        return ResponseEntity.ok(fineService.getFineTypeRatios());
+    }
 
     @GetMapping
     public PageResponse<FineDTO> listFines(
@@ -84,5 +87,7 @@ public class FineController {
         fineService.deleteFine(id);
         return ResponseEntity.noContent().build();
     }
+
+
 }
 

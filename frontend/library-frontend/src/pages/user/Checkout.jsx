@@ -1,13 +1,8 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
-
-const api = axios.create({ baseURL: "http://localhost:8080/api" });
-api.interceptors.request.use((cfg) => {
-  const t = localStorage.getItem("token");
-  if (t) cfg.headers.Authorization = `Bearer ${t}`;
-  return cfg;
-});
+import '../../index.css';
+import api from "../../services/api";
 
 const COVER_COLORS = ["#1a1a2e","#2d1b00","#0d2137","#1a2e1a","#2e1a2e","#2e2200","#1e2e20","#2e1e1e"];
 
@@ -30,7 +25,7 @@ export default function CheckoutPage() {
   const [book, setBook]                     = useState(null);
   const [user, setUser]                     = useState(null);
   const [defaultAddress, setDefaultAddress] = useState(null);
-  const [checkoutDays, setCheckoutDays]     = useState(7);
+  const [checkoutDays, setCheckoutDays]     = useState(null);
   const [notes, setNotes]                   = useState("");
   const [loading, setLoading]               = useState(true);
   const [submitting, setSubmitting]         = useState(false);
@@ -42,27 +37,36 @@ export default function CheckoutPage() {
   useEffect(() => { setTimeout(() => setVisible(true), 60); loadAll(); }, [id]);
 
   const loadAll = async () => {
+  try {
+    setLoading(true); setError(null);
+    const [bookRes, profileRes] = await Promise.all([
+      api.get(`/books/${id}`),
+      api.get("/users/profile"),      
+    ]);
+    setBook(bookRes.data);
+    setUser(profileRes.data);
+    const userId = profileRes.data?.id;
+
+    if (userId) {
+      const addrRes = await api.get(`/users/${userId}/addresses`).catch(() => ({ data: [] }));
+      const raw = addrRes.data;
+      const list = Array.isArray(raw) ? raw : (raw?.content || []);
+      setDefaultAddress(list.find((a) => a.isDefault) ?? null);
+    }
+
     try {
-      setLoading(true); setError(null);
-      const [bookRes, profileRes] = await Promise.all([
-        api.get(`/books/${id}`),
-        api.get("/users/profile"),      
-      ]);
-      setBook(bookRes.data);
-      setUser(profileRes.data);
-      const userId = profileRes.data?.id;
-
-      if (userId) {
-        const addrRes = await api.get(`/users/${userId}/addresses`).catch(() => ({ data: [] }));
-        const raw = addrRes.data;
-        const list = Array.isArray(raw) ? raw : (raw?.content || []);
-        setDefaultAddress(list.find((a) => a.isDefault) ?? null);  // chỉ lấy mặc định
+    const res = await api.get("/subscriptions/user/active"); 
+    const sub = res.data;
+    const days = sub?.loanDurationDays ??sub?.maxDaysPerBook ;
+    setCheckoutDays(days);
+    } catch (err) {
+      console.log("No active subscription. Status:", err.response?.status);
+      if (err.response?.status === 404) {
+        setError("Bạn cần đăng ký gói để mượn sách. Vui lòng đăng ký gói.");
+      } else {
+        setCheckoutDays(7);
       }
-
-      try {
-        const sub = (await api.get("/subscriptions/my-active")).data;
-        setCheckoutDays(sub?.loanDurationDays ?? sub?.checkoutDays ?? sub?.durationDays ?? 7);
-      } catch { setCheckoutDays(7); }
+    } 
     } catch (err) {
       setError(err.response?.data?.message || "Không thể tải thông tin.");
     } finally { setLoading(false); }
@@ -123,7 +127,7 @@ export default function CheckoutPage() {
           
           <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-50 flex items-center gap-2">
-             <h2 className="text-sm font-bold text-gray-800">Thông tin đơn mượn</h2>
+             <h2 className="text-base font-bold text-gray-800">Thông tin đơn hàng</h2>
             </div>
             <div className="flex gap-5 px-6 py-5 border-b border-gray-50">
               <div className="flex-shrink-0 w-20 rounded-2xl overflow-hidden shadow-md" style={{ aspectRatio:"3/4" }}><BookCover book={book} /></div>
@@ -141,28 +145,13 @@ export default function CheckoutPage() {
                 </div>
               )}
               
-              {/* Ngày mượn */}
               <div className="flex justify-between py-3.5"><span className="text-sm font-bold text-gray-900">Ngày mượn</span><span className="text-sm font-semibold text-gray-800">{fmt(today)}</span></div>
-              
-              {/* Hạn trả */}
               <div className="flex justify-between py-3.5"><span className="text-sm font-bold text-gray-900">Hạn trả</span><span className="text-sm font-bold text-gray-900">{fmt(dueDate)}</span></div>
-              
-              {/* Số trang */}
               <div className="flex justify-between py-3.5"><span className="text-sm font-bold text-gray-900">Số trang</span><span className="text-sm font-semibold text-gray-800">{book.pages ? `${book.pages} trang` : "—"}</span></div>
-              
-              {/* Thể loại */}
               <div className="flex justify-between py-3.5"><span className="text-sm font-bold text-gray-900">Thể loại</span><span className="text-sm font-semibold text-gray-800">{book.genreName || "—"}</span></div>
-              
-              {/* Ngôn ngữ */}
               <div className="flex justify-between py-3.5"><span className="text-sm font-bold text-gray-900">Ngôn ngữ</span><span className="text-sm font-semibold text-gray-800">{book.language || "—"}</span></div>
-              
-              {/* Nhà xuất bản */}
               <div className="flex justify-between py-3.5"><span className="text-sm font-bold text-gray-900">Nhà xuất bản</span><span className="text-sm font-semibold text-gray-800">{book.publisherName || "—"}</span></div>
-              
-              {/* Giá thuê */}
-              <div className="flex justify-between py-3.5"><span className="text-sm font-bold text-gray-900">Giá thuê</span><span className="text-sm font-bold text-gray-900">{book.price != null ? Number(book.price).toLocaleString("vi-VN") + "₫" : "Miễn phí"}</span></div>
-              
-              {/* Địa chỉ nhận sách */}
+              <div className="flex justify-between py-3.5"><span className="text-sm font-bold text-gray-900">Giá thuê</span><span className="text-sm font-bold text-gray-900">{book.price != null ? Number(book.price).toLocaleString("vi-VN") + "" : "Miễn phí"}</span></div>
               {defaultAddress && (
                 <div className="flex justify-between py-3.5">
                   <span className="text-sm font-bold text-gray-900">Địa chỉ nhận sách</span>
@@ -194,7 +183,7 @@ export default function CheckoutPage() {
 
           {submitError && <div className="bg-red-50 border border-red-200 rounded-2xl px-5 py-3 text-sm text-red-500 flex items-center gap-2"><span>⚠</span> {submitError}</div>}
 
-          {/* 2 nút bằng nhau — đều flex-1 */}
+
           <div className="flex gap-3 pt-1 pb-8">
             <button onClick={() => navigate(-1)} className="flex-1 bg-white border border-gray-200 rounded-2xl py-4 text-sm font-semibold text-gray-500 cursor-pointer hover:bg-gray-50 transition-colors">
               Quay lại

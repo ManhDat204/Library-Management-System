@@ -41,8 +41,6 @@ function AdminLayout() {
 
   return (
     <div className="flex flex-col h-screen bg-gray-50">
-
-      {/* ── Header ─────────────────────────────────────────────────────────── */}
       <header className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-40">
         <div className="flex items-center justify-between px-4 md:px-8 py-3 md:py-5">
           <div className="flex items-center gap-2 md:gap-4">
@@ -53,7 +51,7 @@ function AdminLayout() {
               <Menu size={20} className="md:w-6 md:h-6" />
             </button>
             <h1 className="text-lg md:text-2xl font-bold text-gray-900 flex items-center gap-1.5 md:gap-2.5 whitespace-nowrap md:whitespace-normal">
-              📚 <span className="hidden sm:inline">Library Management</span>
+              📚 <span className="hidden sm:inline">Bookify  </span>
             </h1>
           </div>
 
@@ -78,7 +76,6 @@ function AdminLayout() {
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Mobile/Tablet Sidebar with Overlay */}
         {sidebarOpen && (
           <div
             className="fixed md:hidden inset-0 bg-black/40 z-30 top-[60px]"

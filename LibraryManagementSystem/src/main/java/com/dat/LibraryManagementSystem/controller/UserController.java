@@ -6,6 +6,7 @@ import com.dat.LibraryManagementSystem.payload.dto.UserDTO;
 import com.dat.LibraryManagementSystem.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
@@ -29,6 +30,7 @@ public class UserController {
         }
 
         @PostMapping("/admin")
+        @PreAuthorize("hasRole('ADMIN')")
         public ResponseEntity<UserDTO> createUser(
                         @RequestBody UserDTO userDTO) throws UserException {
                 return ResponseEntity.ok(
@@ -42,6 +44,7 @@ public class UserController {
         }
 
         @PutMapping("/admin/{id}")
+        @PreAuthorize("hasRole('ADMIN')")
         public ResponseEntity<UserDTO> updateUser(
                         @PathVariable Long id,
                         @RequestBody UserDTO userDTO) throws UserException {
@@ -58,6 +61,7 @@ public class UserController {
         }
 
         @DeleteMapping("/admin/{id}")
+        @PreAuthorize("hasRole('ADMIN')")
         public ResponseEntity<String> deleteUser(
                         @PathVariable Long id) throws UserException {
 
@@ -74,6 +78,6 @@ public class UserController {
 
                 String url = userService.updateAvatar(currentUser.getId(), file);
 
-                return ResponseEntity.ok(Map.of("url", url, "message", "Upload thành công"));
+                return ResponseEntity.ok(Map.of("url", url, "message", "Cập nhật thành công"));
         }
 }

@@ -45,5 +45,7 @@ public class FineDTO {
 
     private LocalDateTime paidAt;
 
+    private double percentage;
+
     private LocalDateTime createdAt;
 }

@@ -1,16 +1,10 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
+import api from "../../services/api";
+import Toast from "../../components/common/Toast";
 
-// ─── API CONFIG ───────────────────────────────────────────────
-const api = axios.create({ baseURL: "http://localhost:8080/api" });
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
 
-// ─── CONSTANTS ────────────────────────────────────────────────
 const COVER_COLORS = [
   "#1a1a2e","#2d1b00","#0d2137","#1a2e1a",
   "#2e1a2e","#2e2200","#1e2e20","#2e1e1e",
@@ -80,7 +74,7 @@ const BookCoverLarge = ({ book }) => {
   );
 };
 
-// ─── HEART BUTTON (top-left of cover) ────────────────────────
+// ─── HEART BUTTON ─────────────────────────────────────────────
 const HeartButton = ({ isInWishlist, busy, onToggle }) => (
   <button
     onClick={(e) => { e.stopPropagation(); onToggle(); }}
@@ -98,9 +92,7 @@ const HeartButton = ({ isInWishlist, busy, onToggle }) => (
     ) : (
       <svg
         viewBox="0 0 24 24"
-        className={`w-4 h-4 transition-all duration-200 ${
-          isInWishlist ? "text-white fill-current" : "text-white"
-        }`}
+        className={`w-4 h-4 transition-all duration-200 ${isInWishlist ? "text-white fill-current" : "text-white"}`}
         fill={isInWishlist ? "currentColor" : "none"}
         stroke="currentColor"
         strokeWidth={isInWishlist ? "0" : "2"}
@@ -112,7 +104,6 @@ const HeartButton = ({ isInWishlist, busy, onToggle }) => (
     )}
   </button>
 );
-
 
 const RatingOverlay = ({ rating }) => {
   if (!rating || rating.totalReviews === 0) return null;
@@ -126,13 +117,12 @@ const RatingOverlay = ({ rating }) => {
   );
 };
 
-// ─── INFO ROW ─────────────────────────────────────────────────
 const InfoRow = ({ label, value }) => {
   if (!value) return null;
   return (
     <div className="flex justify-between items-start py-2 border-b border-gray-100">
-      <span className="text-xs text-gray-400 font-medium">{label}</span>
-      <span className="text-sm text-gray-700 font-semibold text-right max-w-xs">{value}</span>
+      <span className="text-sm text-gray-500 font-medium">{label}</span>
+      <span className="text-sm text-gray-800 font-semibold text-right max-w-xs">{value}</span>
     </div>
   );
 };
@@ -186,28 +176,6 @@ const LoanCard = ({ loan }) => {
   );
 };
 
-// ─── TOAST ────────────────────────────────────────────────────
-const Toast = ({ message, type, onDone }) => {
-  useEffect(() => {
-    const t = setTimeout(onDone, 3000);
-    return () => clearTimeout(t);
-  }, []);
-
-  const iconClass =
-    type === "error"  ? "text-red-400"  :
-    type === "remove" ? "text-gray-400" : "text-green-400";
-  const icon =
-    type === "error"  ? "✕" :
-    type === "remove" ? "♡" : "✓";
-
-  return (
-    <div className="fixed bottom-8 right-8 z-50 bg-gray-900 text-amber-50 px-5 py-3 rounded-2xl text-sm shadow-2xl flex items-center gap-3 max-w-xs animate-fadeDown">
-      <span className={`text-lg ${iconClass}`}>{icon}</span>
-      <span>{message}</span>
-    </div>
-  );
-};
-
 // ─── LOAN MODAL ───────────────────────────────────────────────
 const LoanModal = ({ book, onClose, onSuccess }) => {
   const [notes, setNotes]           = useState("");
@@ -219,7 +187,7 @@ const LoanModal = ({ book, onClose, onSuccess }) => {
   useEffect(() => {
     const fetchSub = async () => {
       try {
-        const res = await api.get("/subscriptions/my-active");
+        const res = await api.get("/subscriptions/user/active");
         const days =
           res.data?.loanDurationDays ??
           res.data?.checkoutDays ??
@@ -267,7 +235,6 @@ const LoanModal = ({ book, onClose, onSuccess }) => {
         className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden animate-fadeUp"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
         <div
           className="relative px-7 py-6"
           style={{ background: "linear-gradient(135deg, #1a1a2e, #2d1b00)" }}
@@ -290,7 +257,6 @@ const LoanModal = ({ book, onClose, onSuccess }) => {
           <p className="text-white text-opacity-50 text-sm mt-1 mb-0">{book.authorName}</p>
         </div>
 
-        {/* Body */}
         <div className="px-7 py-6">
           {subLoading ? (
             <div className="bg-gray-50 rounded-xl px-5 py-4 mb-5 flex items-center justify-center gap-2 text-gray-400 text-sm">
@@ -445,8 +411,8 @@ const StarRating = ({ value, onChange, size = 22 }) => (
   </div>
 );
 
-// ─── REVIEWS TAB ─────────────────────────────────────────────
-const ReviewsTab = ({ bookId }) => {
+
+const ReviewsSection = ({ bookId }) => {
   const [reviews, setReviews]       = useState([]);
   const [loading, setLoading]       = useState(true);
   const [fetchError, setFetchError] = useState(null);
@@ -475,9 +441,15 @@ const ReviewsTab = ({ bookId }) => {
   };
 
   useEffect(() => { if (bookId) fetchReviews(0); }, [bookId]);
-
   return (
-    <div>
+    <div className="mt-10">
+      <h3
+        className="text-lg font-bold text-gray-900 mb-4"
+        style={{ fontFamily: "'Playfair Display',serif" }}
+      >
+        Đánh giá
+      </h3>
+
       {ratingData && ratingData.totalReviews > 0 && (
         <div className="flex items-center gap-4 bg-gray-50 rounded-2xl px-5 py-4 mb-5">
           <div className="text-center min-w-16">
@@ -527,8 +499,8 @@ const ReviewsTab = ({ bookId }) => {
           <div key={i} className="h-20 rounded-xl mb-2 bg-gray-100 animate-pulse" />
         ))
       ) : reviews.length === 0 && !fetchError ? (
-        <div className="text-center py-10 text-gray-300">
-          <div className="text-4xl mb-2">★</div>
+        <div className="text-center py-5 text-gray-400">
+          <div className="text-2xl mb-1">★</div>
           <p className="text-sm">Chưa có đánh giá nào</p>
         </div>
       ) : (
@@ -593,20 +565,17 @@ const ReviewsTab = ({ bookId }) => {
   );
 };
 
-// ─── SKELETON ────────────────────────────────────────────────
 const Skeleton = ({ className = "" }) => (
   <div className={`bg-gray-100 animate-pulse rounded-xl ${className}`} />
 );
 
-// ─── MAIN COMPONENT ───────────────────────────────────────────
+
 export default function BookDetailPage() {
   const { id }   = useParams();
   const navigate = useNavigate();
 
   const [book, setBook]                 = useState(null);
-  const [loans, setLoans]               = useState([]);
   const [loading, setLoading]           = useState(true);
-  const [loansLoading, setLoansLoading] = useState(false);
   const [error, setError]               = useState(null);
   const [rating, setRating]             = useState(null);
 
@@ -616,7 +585,6 @@ export default function BookDetailPage() {
 
   const [toast, setToast]               = useState(null);
   const [visible, setVisible]           = useState(false);
-  const [activeTab, setActiveTab]       = useState("info");
 
   useEffect(() => {
     setTimeout(() => setVisible(true), 80);
@@ -650,15 +618,6 @@ export default function BookDetailPage() {
     } catch {}
   };
 
-  const fetchMyLoans = async () => {
-    try {
-      setLoansLoading(true);
-      const res = await api.get("/book-loans/my-loans", { params: { bookId: id, page: 0, size: 10 } });
-      setLoans(res.data.content || []);
-    } catch { setLoans([]); }
-    finally { setLoansLoading(false); }
-  };
-
   const toggleWishlist = async () => {
     if (wishlistBusy) return;
     setWishlistBusy(true);
@@ -666,11 +625,11 @@ export default function BookDetailPage() {
       if (isInWishlist) {
         await api.delete(`/wishlist/remove/${id}`);
         setIsInWishlist(false);
-        setToast({ message: `Đã xoá "${book?.title}" khỏi wishlist`, type: "remove" });
+        setToast({ message: `Đã xoá "${book?.title}" khỏi yêu thích`, type: "remove" });
       } else {
         await api.post(`/wishlist/add/${id}`);
         setIsInWishlist(true);
-        setToast({ message: `Đã thêm "${book?.title}" vào wishlist`, type: "success" });
+        setToast({ message: `Đã thêm "${book?.title}" vào yêu thích`, type: "success" });
       }
     } catch (err) {
       setToast({ message: err.response?.data?.message || "Thao tác thất bại", type: "error" });
@@ -689,19 +648,7 @@ export default function BookDetailPage() {
     } finally { setReserveBusy(false); }
   };
 
-  const handleLoanSuccess = () => {
-    setShowLoanModal(false);
-    setToast({ message: "Tạo phiếu mượn thành công!", type: "success" });
-    fetchBook();
-    if (activeTab === "loans") fetchMyLoans();
-  };
 
-  const handleTabChange = (tab) => {
-    setActiveTab(tab);
-    if (tab === "loans" && loans.length === 0) fetchMyLoans();
-  };
-
-  // ── Loading ──────────────────────────────────────────────
   if (loading) {
     return (
       <div className="p-8 max-w-5xl mx-auto">
@@ -720,7 +667,7 @@ export default function BookDetailPage() {
     );
   }
 
-  // ── Error ────────────────────────────────────────────────
+
   if (error) {
     return (
       <div className="px-8 py-16 text-center">
@@ -740,60 +687,34 @@ export default function BookDetailPage() {
 
   const avail     = book.availableCopies ?? 0;
   const total     = book.totalCopies ?? 0;
-  const ratio     = total > 0 ? avail / total : 0;
   const canBorrow = avail > 0 && !book.alreadyHaveLoan;
-
-  const availBarColor  = ratio === 0 ? "#ef4444" : ratio < 0.3 ? "#f59e0b" : "#22c55e";
-  const availTextClass = ratio === 0 ? "text-red-500" : ratio < 0.3 ? "text-yellow-500" : "text-green-500";
-
-  const TABS = [
-    { key: "info",    label: "Thông tin" },
-    { key: "desc",    label: "Mô tả" },
-    { key: "loans",   label: "Lịch sử mượn" },
-    { key: "reviews", label: "Đánh giá" },
-  ];
 
   return (
     <>
       <div
-        className={`px-8 py-8 max-w-5xl mx-auto transition-opacity duration-500 ${
-          visible ? "opacity-100" : "opacity-0"
-        }`}
-      >
-        {/* Back */}
+        className={`px-8 py-8 max-w-5xl mx-auto transition-opacity duration-500 ${visible ? "opacity-100" : "opacity-0"}`}>
         <button
           onClick={() => navigate(-1)}
-          className="flex items-center gap-1 text-sm text-gray-400 bg-transparent border-0 cursor-pointer mb-6 p-0 hover:text-gray-600 transition-colors"
-        >
+          className="flex items-center gap-1 text-sm text-gray-400 bg-transparent border-0 cursor-pointer mb-6 p-0 hover:text-gray-600 transition-colors">
           ← Quay lại
         </button>
-
-        <div className="flex gap-10 flex-wrap">
-
-          
-          <div className="flex-shrink-0 w-64">
-
-           
-            <div className="h-96 rounded-2xl overflow-hidden shadow-2xl mb-5 relative">
+        <div className="flex gap-10 items-start flex-wrap">
+          <div className="flex-shrink-0 w-64 flex flex-col">
+            <div className="h-96 rounded-2xl overflow-hidden shadow-2xl relative">
               <BookCoverLarge book={book} />
-
-              
               <HeartButton
                 isInWishlist={isInWishlist}
                 busy={wishlistBusy}
                 onToggle={toggleWishlist}
               />
-
-             
               <RatingOverlay rating={rating} />
             </div>
 
 
-            {/* Nút Mượn ngay → chuyển sang trang checkout */}
             <button
               disabled={!canBorrow}
               onClick={() => canBorrow && navigate(`/home/books/${book.id}/checkout`)}
-              className={`w-full py-3 rounded-xl text-sm font-bold border-0 transition-all ${
+              className={`mt-4 w-full py-3 rounded-xl text-sm font-bold border-0 transition-all ${
                 canBorrow
                   ? "bg-gray-900 text-amber-50 cursor-pointer hover:bg-black shadow-md"
                   : "bg-gray-100 text-gray-400 cursor-not-allowed"
@@ -801,123 +722,72 @@ export default function BookDetailPage() {
             >
               {!canBorrow ? (avail === 0 ? "Hết sách" : "Đang mượn") : "◈ Mượn ngay"}
             </button>
-          </div>
 
-          {/* ── INFO COLUMN ── */}
-          <div className="flex-1 min-w-72">
-
-            {/* Title row */}
-            <div className="flex items-start justify-between gap-3 mb-2">
-            </div>
-
-            
-
-            
-
-            {/* Tabs */}
-            <div className="border-b border-gray-100 mb-6 flex justify-between items-center">
-              <div className="flex">
-                {TABS.map((tab) => (
+            {avail === 0 && (
+              <div className="mt-2">
+                {!book.alreadyHaveReservation ? (
                   <button
-                    key={tab.key}
-                    onClick={() => handleTabChange(tab.key)}
-                    className={`px-4 py-2 text-sm font-semibold border-0 bg-transparent cursor-pointer transition-all border-b-2 -mb-px ${
-                      activeTab === tab.key
-                        ? "text-gray-900 border-gray-900"
-                        : "text-gray-400 border-transparent hover:text-gray-600"
+                    onClick={handleReserve}
+                    disabled={reserveBusy}
+                    className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold border transition-all ${
+                      reserveBusy
+                        ? "bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200"
+                        : "bg-white text-gray-700 border-gray-300 cursor-pointer hover:bg-gray-50"
                     }`}
                   >
-                    {tab.label}
+                    {reserveBusy && (
+                      <span className="w-3 h-3 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+                    )}
+                    Đặt trước
                   </button>
-                ))}
-              </div>
-              
-              {/* Reserve button on the right */}
-              {avail === 0 && (
-                <div className="flex-shrink-0 pb-2">
-                  {!book.alreadyHaveReservation && (
-                    <button
-                      onClick={handleReserve}
-                      disabled={reserveBusy}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold border border-gray-200 transition-all ${
-                        reserveBusy
-                          ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                          : "bg-white text-gray-600 cursor-pointer hover:bg-gray-50"
-                      }`}
-                    >
-                      {reserveBusy && <span className="w-2.5 h-2.5 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />}
-                      Đặt trước
-                    </button>
-                  )}
-
-                  {book.alreadyHaveReservation && (
-                    <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg">
-                      <span className="text-xs text-gray-600 font-semibold">Đã đặt trước</span>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {activeTab === "info" && (
-              <div>
-                <InfoRow label="Tên sách"         value={book.title} />
-                <InfoRow label="ISBN"            value={book.isbn} />
-                <InfoRow label="Thể loại"        value={book.genreName} />
-                <InfoRow label="Tác giả"         value={book.authorName} />
-                <InfoRow label="Nhà xuất bản"    value={book.publisherName} />
-                <InfoRow label="Ngôn ngữ"        value={book.language} />
-                <InfoRow label="Giá"            value={book.price != null ? Number(book.price).toLocaleString("vi-VN") + "₫" : "Miễn phí"} />
-                <InfoRow label="Số trang"        value={book.pages ? `${book.pages} trang` : null} />
-                <InfoRow label="Ngày xuất bản"   value={book.publicationDate} />
-                <InfoRow label="Tổng số bản"     value={book.totalCopies != null ? `${book.totalCopies} cuốn` : null} />
-                <InfoRow label="Còn có thể mượn" value={book.availableCopies != null ? `${book.availableCopies} cuốn` : null} />
-              </div>
-            )}
-
-            {activeTab === "desc" && (
-              <div>
-                {book.description ? (
-                  <p className="text-sm text-gray-500 leading-relaxed whitespace-pre-wrap m-0">
-                    {book.description}
-                  </p>
                 ) : (
-                  <div className="text-center py-10 text-gray-300">
-                    <div className="text-4xl mb-2">◈</div>
-                    <p className="text-sm">Chưa có mô tả</p>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {activeTab === "reviews" && <ReviewsTab bookId={book.id} />}
-
-            {activeTab === "loans" && (
-              <div>
-                {loansLoading ? (
-                  Array(2).fill(0).map((_, i) => (
-                    <div key={i} className="h-28 rounded-2xl mb-2 bg-gray-100 animate-pulse" />
-                  ))
-                ) : loans.length === 0 ? (
-                  <div className="text-center py-10 text-gray-300">
-                    <div className="text-4xl mb-2">◎</div>
-                    <p className="text-sm">Bạn chưa mượn sách này</p>
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-2">
-                    {loans.map((loan) => <LoanCard key={loan.id} loan={loan} />)}
+                  <div className="w-full text-center py-2.5 bg-gray-50 border border-gray-200 rounded-xl">
+                    <span className="text-xs text-gray-500 font-semibold">✓ Đã đặt trước</span>
                   </div>
                 )}
               </div>
             )}
           </div>
-        </div>
 
+
+          <div className="flex-1 min-w-72">
+            <h1
+              className="text-2xl font-black text-gray-900 leading-tight mb-1"
+              style={{ fontFamily: "'Playfair Display',serif" }}
+            >
+              {book.title}
+            </h1>
+            <div className="mb-2">
+              <InfoRow label="ISBN"             value={book.isbn} />
+              <InfoRow label="Thể loại"         value={book.genreName} />
+              <InfoRow label="Tác giả"          value={book.authorName} />
+              <InfoRow label="Nhà xuất bản"     value={book.publisherName} />
+              <InfoRow label="Ngôn ngữ"         value={book.language} />
+              <InfoRow label="Giá"              value={book.price != null ? Number(book.price).toLocaleString("vi-VN") + "₫" : "Miễn phí"} />
+              <InfoRow label="Số trang"         value={book.pages ? `${book.pages} trang` : null} />
+              <InfoRow label="Ngày xuất bản"    value={book.publicationDate} />
+              <InfoRow label="Tổng số bản"      value={book.totalCopies != null ? `${book.totalCopies} cuốn` : null} />
+              <InfoRow label="Còn có thể mượn"  value={book.availableCopies != null ? `${book.availableCopies} cuốn` : null} />
+            </div>
+            </div>
+            </div>
+            <div className="mt-10">
+              <h3
+                className="text-lg font-bold text-gray-900 mb-4"
+                style={{ fontFamily: "'Playfair Display',serif" }}
+              > Mô tả
+              </h3>
+
+              <p className="text-sm text-gray-500 leading-relaxed whitespace-pre-wrap ">
+                {book.description || "Chưa có mô tả cho cuốn sách này."}
+              </p>
+          </div>
+
+        <ReviewsSection bookId={book.id} />
         <RelatedBooks genreId={book.genreId} currentBookId={book.id} />
       </div>
-
       {toast && (
-        <Toast message={toast.message} type={toast.type} onDone={() => setToast(null)} />
+        <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} position="bottom" timeout={3000} />
       )}
     </>
   );

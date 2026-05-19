@@ -27,6 +27,10 @@ export default {
         slideUp:  "slideUp 0.25s ease both",
         shimmer:  "shimmer 1.4s infinite",
       },
+      fontFamily: {
+      sans: ['Nunito', 'sans-serif'],       
+      serif: ['Playfair Display', 'serif'],    
+    },
     },
   },
   plugins: [], 

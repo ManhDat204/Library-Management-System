@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Bot, Loader2, Send, User, X, MessageCircle } from "lucide-react";
-import { aiService } from "../services/aiService";
+import { aiService } from "../../services/chatboxService";
 
 const INITIAL_MESSAGES = [
   {
@@ -59,6 +59,28 @@ export default function ChatBox() {
     }
   };
 
+  const renderContent = (text) => {
+
+  const cleaned = text.replace(/\*\*(.*?)\*\*/g, "$1").replace(/\*(.*?)\*/g, "$1");
+  const parts = cleaned.split(/(\[IMG:[^\]]+\])/g);
+
+  return parts.map((part, i) => {
+    const imgMatch = part.match(/^\[IMG:([^\]]+)\]$/);
+    if (imgMatch) {
+      return (
+        <img
+          key={i}
+          src={imgMatch[1]}
+          alt="Bìa sách"
+          className="w-full max-w-[160px] rounded-lg mt-1.5 mb-1 border border-gray-100 shadow-sm object-cover"
+          onError={(e) => { e.currentTarget.style.display = "none"; }}
+        />
+      );
+    }
+    return <span key={i}>{part}</span>;
+  });
+};
+
   return (
     <div className="fixed bottom-5 right-5 z-[80] flex flex-col items-end">
       {open && (
@@ -67,9 +89,9 @@ export default function ChatBox() {
           <div className="h-12 px-3 border-b border-gray-100 flex items-center justify-between bg-gray-950 text-white flex-shrink-0">
             <div className="flex items-center gap-2 min-w-0">
               <div className="w-7 h-7 rounded-full bg-amber-500 text-gray-950 flex items-center justify-center flex-shrink-0">
-                <Bot size={15} />
+                
               </div>
-              <p className="text-sm font-bold leading-tight truncate">Trợ lý SáchHay</p>
+              <p className="text-sm font-bold leading-tight truncate">Trợ lý Bookify</p>
             </div>
             <button
               type="button"
@@ -81,7 +103,6 @@ export default function ChatBox() {
             </button>
           </div>
 
-          {/* Messages */}
           <div className="flex-1 overflow-y-auto px-3 py-3 bg-gray-50">
             <div className="space-y-2.5">
               {messages.map((message, index) => {
@@ -90,7 +111,7 @@ export default function ChatBox() {
                   <div key={`${message.role}-${index}`} className={`flex gap-2 ${isUser ? "justify-end" : "justify-start"}`}>
                     {!isUser && (
                       <div className="w-6 h-6 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center flex-shrink-0 mt-0.5">
-                        <Bot size={13} />
+                        
                       </div>
                     )}
                     <div
@@ -100,7 +121,7 @@ export default function ChatBox() {
                           : "bg-white text-gray-800 border border-gray-100 rounded-bl-md"
                       }`}
                     >
-                      {message.content}
+                      {isUser ? message.content : renderContent(message.content)}
                     </div>
                     {isUser && (
                       <div className="w-6 h-6 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -126,7 +147,7 @@ export default function ChatBox() {
             </div>
           </div>
 
-          {/* Input */}
+
           <div className="p-2.5 border-t border-gray-100 bg-white flex-shrink-0">
             <div className="flex items-end gap-2">
               <textarea
@@ -151,8 +172,6 @@ export default function ChatBox() {
           </div>
         </div>
       )}
-
-      {/* Trigger button - nhỏ hơn */}
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}

@@ -16,9 +16,7 @@ import java.util.Optional;
 
 public interface GenreRepository extends JpaRepository<Genre, Long> {
     List<Genre> findByActiveTrueOrderByNameAsc();
-
     List<Genre> findByParentGenreIsNullAndActiveTrueOrderByNameAsc();
-
     List<Genre> findByParentGenreIdAndActiveTrueOrderByNameAsc(Long parentGenreId);
 
     Long countByActiveTrue();
@@ -43,6 +41,8 @@ public interface GenreRepository extends JpaRepository<Genre, Long> {
             nativeQuery = true)
     List<Object[]> findTopBorrowedGenres(@Param("limit") int limit);
 
+    Page<Genre> findByActiveTrue(Pageable pageable);
     Page<Genre> findByNameContainingIgnoreCase(String name, Pageable pageable);
+    Page<Genre> findByNameContainingIgnoreCaseAndActiveTrue(String name, Pageable pageable);
 
 }

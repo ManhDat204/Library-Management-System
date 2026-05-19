@@ -7,6 +7,10 @@ import com.dat.LibraryManagementSystem.payload.dto.BookLoanDTO;
 import com.dat.LibraryManagementSystem.payload.request.*;
 import com.dat.LibraryManagementSystem.payload.response.PageResponse;
 
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Map;
+
 public interface BookLoanService {
     BookLoanDTO checkoutBook(CheckoutRequest checkoutRequest) throws Exception;
 
@@ -27,7 +31,7 @@ public interface BookLoanService {
 
     BookLoanDTO getMyBookLoanById(Long id) throws Exception;
 
-    // User xác nhận đã nhận sách khi status = SHIPPING
+
     BookLoanDTO confirmReceived(Long loanId) throws Exception;
 
     // Admin đánh dấu đang vận chuyển
@@ -35,5 +39,7 @@ public interface BookLoanService {
 
     // Admin đánh dấu giao hàng thành công
     BookLoanDTO markDelivered(Long loanId) throws Exception;
+
+    List<Map<String, Object>> getLoansByDayOfWeek(LocalDate startDate, LocalDate endDate);
 
 }

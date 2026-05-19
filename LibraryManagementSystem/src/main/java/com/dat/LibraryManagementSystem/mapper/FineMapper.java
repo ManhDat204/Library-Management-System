@@ -17,6 +17,7 @@ public class FineMapper {
                     .bookTitle(fine.getBookLoan().getBook().getTitle())
                     .overdueDays(fine.getOverdueDays())
                     .amount(fine.getAmount().longValue())
+                    .fineType(fine.getFineType())
                     .status(fine.getStatus())
                     .reason(fine.getReason())
                     .paidAt(fine.getPaidAt())

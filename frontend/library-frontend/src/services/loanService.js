@@ -18,4 +18,6 @@ export const loanService = {
   requestReturn: (data) => api.post(`/book-loans/my/return-request`, data),
 
   markDelivered: (id) => api.patch(`/book-loans/${id}/delivered`),
+
+  deleteLoan: (id) => api.delete(`/book-loans/${id}`),
 };

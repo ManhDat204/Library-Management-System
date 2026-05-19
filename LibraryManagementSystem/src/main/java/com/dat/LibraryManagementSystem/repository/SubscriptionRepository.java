@@ -1,6 +1,8 @@
 package com.dat.LibraryManagementSystem.repository;
 
 import com.dat.LibraryManagementSystem.model.Subscription;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -35,5 +37,10 @@ public interface SubscriptionRepository extends JpaRepository<Subscription,Long>
             "join fetch s.plan")
     List<Subscription> findAllWithUserAndPlan();
 
+    @Query("select s from Subscription s " +
+            "join fetch s.user " +
+            "join fetch s.plan " +
+            "order by s.createdAt desc")
+    Page<Subscription> findRecentSubscriptions(Pageable pageable);
 
 }

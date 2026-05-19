@@ -1,22 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import axios from "axios";
+import api from "../../services/api";
 
-const api = axios.create({ baseURL: "http://localhost:8080/api" });
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
-
-// ─── Detect loại thanh toán từ txnRef ────────────────────────
 const detectPaymentType = (txnRef = "") => {
   if (txnRef.startsWith("SUBS")) return "SUBSCRIPTION";
   if (txnRef.startsWith("FINE")) return "FINE";
   return "WALLET";
 };
 
-// ─── Config UI + navigation theo từng loại ───────────────────
+
 const TYPE_CONFIG = {
   WALLET: {
     successTitle:  "Nạp tiền thành công!",
@@ -30,14 +23,14 @@ const TYPE_CONFIG = {
     successTitle:  "Đăng ký thành công!",
     successMsg:    "Gói đăng ký của bạn đã được kích hoạt.",
     successIcon:   "🎉",
-    primaryLabel:  "Xem gói đăng ký →",
+    primaryLabel:  "Quay lại",
     primaryPath:   "/home/subscription",
     failedRetryPath: "/home/subscription",
   },
   FINE: {
     successTitle:  "Thanh toán phạt thành công!",
     successMsg:    "Khoản phạt đã được thanh toán.",
-    successIcon:   "✅",
+    successIcon:   "✔️",
     primaryLabel:  "Xem đơn mượn",
     primaryPath:   "/home/my-loans",
     failedRetryPath: "/home/my-loans",
@@ -51,9 +44,8 @@ export default function PaymentSuccess() {
   const [message, setMessage] = useState("");
   const [payType, setPayType] = useState("WALLET");
 
-  // ✅ Chặn React StrictMode gọi 2 lần
-  const hasCalled = useRef(false);
 
+  const hasCalled = useRef(false);
   useEffect(() => {
     if (hasCalled.current) return;
     hasCalled.current = true;
@@ -70,11 +62,10 @@ export default function PaymentSuccess() {
       const type         = detectPaymentType(txnRef);
       setPayType(type);
 
-      // ✅ Chỉ gọi 1 lần duy nhất
+
       await api.post("/payments/vnpay-verify", params);
 
       if (responseCode === "00") {
-        // Kích hoạt subscription nếu cần
         if (type === "SUBSCRIPTION") {
           const match = txnRef.match(/^SUBS(\d+)-/);
           if (match) {
@@ -130,7 +121,6 @@ export default function PaymentSuccess() {
           animation: "fadeUp 0.4s ease both",
         }}>
 
-          {/* ── Loading ── */}
           {status === "loading" && (
             <>
               <div style={{
@@ -151,7 +141,6 @@ export default function PaymentSuccess() {
             </>
           )}
 
-          {/* ── Success ── */}
           {status === "success" && (
             <>
               <div style={{
@@ -176,7 +165,6 @@ export default function PaymentSuccess() {
               </p>
 
               <div style={{ display: "flex", gap: 10 }}>
-                {/* Nút chính: về đúng trang theo loại thanh toán */}
                 <button
                   onClick={() => navigate(cfg.primaryPath)}
                   style={{
@@ -189,7 +177,6 @@ export default function PaymentSuccess() {
                   {cfg.primaryLabel}
                 </button>
 
-                {/* Nút phụ: luôn về trang chủ */}
                 <button
                   onClick={() => navigate("/home")}
                   style={{
@@ -205,7 +192,6 @@ export default function PaymentSuccess() {
             </>
           )}
 
-          {/* ── Failed ── */}
           {status === "failed" && (
             <>
               <div style={{
@@ -229,7 +215,6 @@ export default function PaymentSuccess() {
               </p>
 
               <div style={{ display: "flex", gap: 10 }}>
-                {/* Nút thử lại: về đúng trang để thanh toán lại */}
                 <button
                   onClick={() => navigate(cfg.failedRetryPath)}
                   style={{

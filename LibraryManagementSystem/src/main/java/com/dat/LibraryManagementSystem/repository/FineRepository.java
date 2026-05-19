@@ -48,4 +48,9 @@ public interface FineRepository extends JpaRepository<Fine, Long>, JpaSpecificat
         @Query("SELECT f FROM Fine f WHERE f.deletedAt IS NULL AND f.status = 'PENDING' " +
                         "ORDER BY f.amount DESC")
         Page<Fine> findTopPendingFines(Pageable pageable);
+
+        @Query("SELECT f.fineType, COUNT(f) FROM Fine f WHERE f.deletedAt IS NULL GROUP BY f.fineType")
+        List<Object[]> countGroupByFineType();
+
+
 }

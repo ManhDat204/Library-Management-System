@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from "react";
 import { Plus, Edit2, Trash2, X, Loader2, Building2, Search } from "lucide-react";
-
 import Toast from "../../components/common/Toast";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
 import Pagination from "../../components/common/Pagination";
@@ -32,7 +31,7 @@ function Publishers() {
   const getUniqueAddresses = () =>
     [...new Set(allPublishers.map(p => p.address).filter(Boolean))].sort();
 
-  // Debounce search
+
   useEffect(() => {
     clearTimeout(searchDebounce.current);
     searchDebounce.current = setTimeout(() => {
@@ -62,6 +61,8 @@ function Publishers() {
         ...(address.trim()         && { address: address.trim() }),
         page,
         size: 10,
+        sortBy: "id",         
+        sortDirection: "DESC"
       });
       const data = res.data;
       
@@ -183,7 +184,6 @@ function Publishers() {
       )}
 
       <div style={{ width: "100%", padding: "16px", boxSizing: "border-box" }} className="md:p-6">
-        {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 md:mb-6">
           <h2 className="text-2xl md:text-3xl font-bold text-gray-800">Quản lý nhà xuất bản</h2>
           <button
@@ -194,7 +194,6 @@ function Publishers() {
           </button>
         </div>
 
-        {/* ✅ Filter: thanh tìm kiếm dài, chỉ 1 filter địa chỉ */}
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 md:p-4 mb-4">
           <div className="flex flex-row gap-3 items-end">
   
@@ -226,14 +225,10 @@ function Publishers() {
               ))}
             </select>
           </div>
-
-           
           </div>
         </div>
 
         
-
-        {/* Table */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
@@ -298,7 +293,6 @@ function Publishers() {
         )}
       </div>
 
-      {/* Form Modal */}
       {showForm && (
         <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50 p-4 backdrop-blur-sm">
           <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto">

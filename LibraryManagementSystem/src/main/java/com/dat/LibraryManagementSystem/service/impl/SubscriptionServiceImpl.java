@@ -18,6 +18,7 @@ import com.dat.LibraryManagementSystem.model.Payment;
 import com.dat.LibraryManagementSystem.payload.dto.PaymentDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
@@ -44,15 +45,18 @@ public class SubscriptionServiceImpl implements SubscriptionService {
                 .findById(subscriptionDTO.getPlanId()).orElseThrow(
                         ()-> new Exception("Gói khong ton tai")
                 );
-
-        //  Optional<sub>
+        Optional<Subscription> existingActive = subscriptionRepository
+            .findActiveSubscriptionByUserId(user.getId(), LocalDate.now());
+        if (existingActive.isPresent()) {
+            throw new SubscriptionException("Bạn đang có gói đang hoạt động. Vui lòng huỷ gói hiện tại trước.");
+        }
 
         Subscription subscription = subscriptionMapper.toEntity(subscriptionDTO, plan, user);
         subscription.initializeFromPlan();
         subscription.setIsActive(false);
 
         Subscription savedSubscription = subscriptionRepository.save(subscription);
-        // create a payment record for the newly created subscription
+
         try {
             PaymentDTO paymentDto = PaymentDTO.builder()
                     .userId(user.getId())
@@ -65,11 +69,10 @@ public class SubscriptionServiceImpl implements SubscriptionService {
                     .build();
             PaymentDTO savedPayment = paymentService.createPayment(paymentDto);
 
-            // optionally include payment id in response notes so client can use it
-            savedSubscription.setNotes("paymentId=" + savedPayment.getId());
-            savedSubscription = subscriptionRepository.save(savedSubscription);// thêm dòng này
 
-            return subscriptionMapper.toDTO(savedSubscription); // trả về sau khi đã có notes
+            savedSubscription.setNotes("paymentId=" + savedPayment.getId());
+            savedSubscription = subscriptionRepository.save(savedSubscription);
+            return subscriptionMapper.toDTO(savedSubscription);
         } catch (Exception e) {
             log.error("failed to create payment record", e);
         }
@@ -110,7 +113,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
         Subscription subscription = subscriptionRepository.findById(subscriptionId).orElseThrow(
                 () -> new SubscriptionException("Subscription khong ton tai voi ID")
         );
-        // verify payment using payment service
+       
         try {
             paymentService.verifyPayment(paymentId);
         } catch (Exception e) {
@@ -123,10 +126,11 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     }
 
     @Override
-    public List<SubscriptionDTO> getAllSubscriptions(Pageable pageable) {
-        List<Subscription>  subscriptions = subscriptionRepository.findAll();
-        return subscriptionMapper.toDTOList(subscriptions);
+    public Page<SubscriptionDTO> getAllSubscriptions(Pageable pageable) {
+        return subscriptionRepository.findAll(pageable)
+                .map(subscriptionMapper::toDTO);
     }
+
 
 
     @Override
@@ -137,5 +141,13 @@ public class SubscriptionServiceImpl implements SubscriptionService {
             subscription.setIsActive(false);
             subscriptionRepository.save(subscription);
         }
+    }
+
+
+    @Override
+    public Page<SubscriptionDTO> getRecentSubscriptions(Pageable pageable) {
+        return subscriptionRepository
+                .findRecentSubscriptions(pageable)
+                .map(subscriptionMapper::toDTO);
     }
 }

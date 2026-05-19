@@ -1,24 +1,19 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect , useRef } from "react";
 import { Search, X, Loader2, ChevronLeft, ChevronRight, BookOpen, Eye, ChevronDown, Trash2 } from "lucide-react";
-
-// Import common components
 import Toast from "../../components/common/Toast";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
 import StatusBadge from "../../components/common/StatusBadge";
 import Field from "../../components/common/Field";
 import Pagination from "../../components/common/Pagination";
-
-// Import services
 import { loanService } from "../../services/loanService";
 import { notificationService } from "../../services/notificationService";
 import wsService from "../../services/websocketService";
-
-// Import utilities
 import { getStatus, isPending, isCheckOut } from "../../utils/statusHelpers";
 import { formatAddress } from "../../utils/formatters";
 import { todayStr, calculateOverdueDays, calculateDaysBorrowed } from "../../utils/dateHelpers";
 
-// ApproveScreen component
+
+
 function ApproveScreen({ loan, onBack, onDone, showToast }) {
   const [submitting, setSubmitting] = useState(false);
   const [condition, setCondition] = useState("RETURNED");
@@ -85,7 +80,7 @@ function ApproveScreen({ loan, onBack, onDone, showToast }) {
                 <span className="font-mono font-bold text-gray-900 text-base">{loan.id}</span>
               </div>
               <div className="flex flex-col gap-1">
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Độc giả</p>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Khách Hàng</p>
                 <span className="font-semibold text-gray-900">{loan.userName || loan.userFullName}</span>
               </div>
               <div className="flex flex-col gap-1">
@@ -179,7 +174,6 @@ function ApproveScreen({ loan, onBack, onDone, showToast }) {
   );
 }
 
-// CheckoutModal component
 function CheckoutModal({ show, onClose, onSuccess, showToast, form, setForm, errors, setErrors }) {
   const submitting = form.submitting;
 
@@ -252,52 +246,130 @@ function CheckoutModal({ show, onClose, onSuccess, showToast, form, setForm, err
   );
 }
 
-// LoanDetailModal component
 function LoanDetailModal({ loan, onClose, onMarkShipping, onApprove }) {
   if (!loan) return null;
 
+  const status = getStatus(loan);
+  const overdueDays = loan.overdueDays || 0;
+  const fineAmount = loan.fineAmount ? Number(loan.fineAmount).toLocaleString("vi-VN") + "₫" : null;
+
+  const InfoBlock = ({ label, value }) => (
+    <div>
+      <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-0.5">{label}</p>
+      <p className="text-sm font-semibold text-gray-800">{value || <span className="text-gray-300">—</span>}</p>
+    </div>
+  );
+
+const address = [loan.street, loan.ward, loan.district, loan.province].filter(Boolean).join(", ");
+
   return (
     <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50 p-4 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl" style={{ animation: "fadeUp 0.25s ease" }}>
-        <div className="flex items-center justify-between p-6 border-b border-gray-100">
-          <h2 className="text-lg font-bold text-gray-800">Chi tiết phiếu mượn</h2>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg transition"><X size={18} /></button>
+      <div className="bg-white rounded-2xl w-full max-w-3xl shadow-2xl" style={{ animation: "fadeUp 0.25s ease" }}>
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
+          <div className="flex items-center gap-2.5">
+            <h2 className="text-base font-bold text-gray-800">Chi tiết phiếu mượn</h2>
+            <span className="font-mono text-xs text-gray-400">#{loan.id}</span>
+            <StatusBadge status={status} />
+          </div>
+          <button onClick={onClose} className="p-1.5 hover:bg-gray-100 rounded-lg transition">
+            <X size={16} />
+          </button>
         </div>
-        <div className="p-6 grid grid-cols-2 gap-4 text-sm">
-          {[
-            ["Mã phiếu", loan.id],
-            ["Người mượn", loan.userName || loan.userFullName],
-            ["Email", loan.userEmail],
-            ["Tên sách", loan.bookTitle],
-            ["Ngày mượn", loan.checkoutDateTime
-              ? `${new Date(loan.checkoutDateTime).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" })} ${new Date(loan.checkoutDateTime).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}`
-              : (loan.checkoutDate || loan.loanDate)],
-            ["Hạn trả", loan.dueDate],
-            ["Địa chỉ giao", formatAddress(loan) || "Chưa có"],
-            ["Ngày trả thực", loan.returnDate || "—"],
-            ["Nhân viên xử lý", loan.handledBy || "Chưa xử lý"],
-            ["Trạng thái", <StatusBadge status={getStatus(loan)} />],
-          ].filter(([, v]) => v !== undefined && v !== null).map(([label, val]) => (
-            <div key={label}>
-              <p className="text-xs font-semibold text-gray-400 uppercase mb-0.5">{label}</p>
-              <p className="text-gray-800 font-medium">{val}</p>
+
+        <div className="p-5 space-y-4">
+          <div className="flex gap-3 p-3 bg-gray-50 rounded-xl">
+            {loan.bookCoverImage ? (
+              <img src={loan.bookCoverImage} alt={loan.bookTitle}
+                className="w-12 h-16 object-cover rounded-lg flex-shrink-0" />
+            ) : (
+              <div className="w-12 h-16 bg-gray-200 rounded-lg flex items-center justify-center flex-shrink-0">
+                <BookOpen size={16} className="text-gray-400" />
+              </div>
+            )}
+            <div className="flex flex-col justify-center">
+              <p className="font-bold text-gray-900 text-sm leading-snug">{loan.bookTitle}</p>
             </div>
-          ))}
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <InfoBlock label="Họ tên" value={loan.userName || loan.userFullName} />
+            <InfoBlock label="Email" value={loan.userEmail} />
+            <InfoBlock label="Nhân viên xử lý" value={loan.handledBy} />
+          </div>
+
+          <div className="h-px bg-gray-100" />
+          <div className="grid grid-cols-3 gap-3">
+            <InfoBlock label="Ngày mượn" value={
+              loan.checkoutDateTime
+                ? new Date(loan.checkoutDateTime).toLocaleString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })
+                : loan.checkoutDate
+            } />
+            <InfoBlock label="Hạn trả" value={
+              <span className={overdueDays > 0 ? "text-rose-500" : ""}>
+                {loan.dueDate}
+                {overdueDays > 0 && (
+                  <span className="ml-1 text-xs bg-rose-50 text-rose-500 px-1.5 py-0.5 rounded-full">
+                    Trễ {overdueDays} ngày
+                  </span>
+                )}
+              </span>
+            } />
+            <InfoBlock label="Ngày trả thực" value={loan.returnDate} />
+          </div>
+
+          {(loan.recipientName || loan.province) && (
+            <>
+              <div className="h-px bg-gray-100" />
+              <div className="grid grid-cols-3 gap-3">
+                <InfoBlock label="Người nhận" value={loan.recipientName} />
+                <InfoBlock label="Số điện thoại" value={loan.phoneNumber} />
+                <InfoBlock label="Địa chỉ" value={address} />
+              </div>
+            </>
+          )}
+
+          {fineAmount && (
+            <>
+              <div className="h-px bg-gray-100" />
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-0.5">Phí phạt</p>
+                  <p className="text-sm font-bold text-rose-500">{fineAmount}</p>
+                </div>
+                <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${loan.finePaid ? "bg-green-50 text-green-600" : "bg-red-50 text-red-500"}`}>
+                  {loan.finePaid ? "Đã thanh toán" : "Chưa thanh toán"}
+                </span>
+              </div>
+            </>
+          )}
+
+          {loan.notes && (
+            <>
+              <div className="h-px bg-gray-100" />
+              <div>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-0.5">Ghi chú</p>
+                <p className="text-sm text-gray-600">{loan.notes}</p>
+              </div>
+            </>
+          )}
         </div>
-        <div className="flex justify-end gap-2 px-6 pb-6">
-          {isCheckOut(getStatus(loan)) && (
+
+        <div className="flex justify-end gap-2 px-5 pb-5">
+          {isCheckOut(status) && (
             <button onClick={() => onMarkShipping(loan)}
-              className="flex items-center gap-1.5 px-4 py-2 bg-indigo-500 text-white rounded-xl text-sm font-semibold hover:bg-indigo-600 transition">
-              <ChevronRight size={15} /> Giao hàng
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-indigo-500 text-white rounded-xl text-sm font-semibold hover:bg-indigo-600 transition">
+              <ChevronRight size={14} /> Giao hàng
             </button>
           )}
-          {isPending(getStatus(loan)) && (
+          {isPending(status) && (
             <button onClick={() => onApprove(loan)}
-              className="flex items-center gap-1.5 px-4 py-2 bg-violet-500 text-white rounded-xl text-sm font-semibold hover:bg-violet-600 transition">
-              <ChevronDown size={15} /> Xử lý phiếu
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-violet-500 text-white rounded-xl text-sm font-semibold hover:bg-violet-600 transition">
+              <ChevronDown size={14} /> Xử lý phiếu
             </button>
           )}
-          <button onClick={onClose} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-xl text-sm font-semibold hover:bg-gray-200 transition">Đóng</button>
+          <button onClick={onClose}
+            className="px-3.5 py-2 bg-gray-100 text-gray-700 rounded-xl text-sm font-semibold hover:bg-gray-200 transition">
+            Đóng
+          </button>
         </div>
       </div>
     </div>
@@ -312,7 +384,6 @@ function Loans() {
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
-
   const [toast, setToast] = useState(null);
   const [confirm, setConfirm] = useState(null);
   const [detail, setDetail] = useState(null);
@@ -320,8 +391,12 @@ function Loans() {
   const [showCheckout, setShowCheckout] = useState(false);
   const [checkoutForm, setCheckoutForm] = useState({ userId: "", bookId: "", checkoutDays: 14, submitting: false });
   const [checkoutErrors, setCheckoutErrors] = useState({});
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const searchDebounce = useRef(null);
 
-  const pageSize = 10;
+
 
   const showToast = (msg, type = "info") => setToast({ message: msg, type });
 
@@ -330,8 +405,11 @@ function Loans() {
     try {
       const res = await loanService.searchLoans({
         status: statusFilter || undefined,
+        searchTerm: debouncedSearch.trim() || undefined,
+        startDate: startDate || undefined,
+        endDate: endDate || undefined,
         page: overridePage,
-        size: pageSize,
+        size: 10,
         sortBy: "createdAt",
         sortDirection: "DESC",
       });
@@ -345,16 +423,25 @@ function Loans() {
     }
   };
 
-  useEffect(() => {
-    fetchLoans(page);
-  }, [page, statusFilter]);
+    useEffect(() => {
+      fetchLoans(page);
+    }, [page, statusFilter,  debouncedSearch, startDate, endDate]);
+
+
+    useEffect(() => {
+    clearTimeout(searchDebounce.current);
+    searchDebounce.current = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(0);
+    }, 400);
+    return () => clearTimeout(searchDebounce.current);
+    }, [search])
+
 
   useEffect(() => {
-    const userId = localStorage.getItem("userId");
+    const userId = sessionStorage.getItem("userId");
     if (!userId) return;
-
     wsService.connect(userId);
-
     const unsubscribeLoanCreated = wsService.listen("LOAN_CREATED", () => {
       showToast("Có phiếu mượn mới!", "info");
       fetchLoans(0);
@@ -376,10 +463,7 @@ function Loans() {
     };
   }, []);
 
-  const handleSearch = () => {
-    setPage(0);
-    fetchLoans(0);
-  };
+
 
   const handleMarkShipping = async (loan) => {
     setConfirm(null);
@@ -432,7 +516,7 @@ function Loans() {
     }
   };
 
-  // ✅ handleDelete đặt đúng vị trí trong Loans
+
   const handleDelete = async (loan) => {
     setConfirm(null);
     try {
@@ -490,7 +574,6 @@ function Loans() {
               placeholder="Tìm theo tên người dùng, tên sách..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
               className="w-full pl-11 pr-10 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-sky-300 bg-gray-50"
             />
             {search && (
@@ -515,11 +598,27 @@ function Loans() {
             <option value="PENDING_RETURN">Chờ duyệt trả</option>
             <option value="RETURNED">Đã trả</option>
           </select>
-          <button onClick={handleSearch} className="px-4 py-2.5 bg-sky-500 text-white rounded-xl text-sm font-semibold hover:bg-sky-600 transition">
-            Tìm kiếm
-          </button>
+          <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5">
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => { setStartDate(e.target.value); setPage(0); }}
+              className="text-sm text-gray-600 bg-transparent outline-none"
+            />
+            <span className="text-gray-300">→</span>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => { setEndDate(e.target.value); setPage(0); }}
+              className="text-sm text-gray-600 bg-transparent outline-none"
+            />
+            {(startDate || endDate) && (
+              <button onClick={() => { setStartDate(""); setEndDate(""); setPage(0); }}>
+                <X size={14} className="text-gray-400 hover:text-gray-600" />
+              </button>
+            )}
+          </div>
         </div>
-
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -553,7 +652,7 @@ function Loans() {
                     return (
                       <tr key={loan.id} className="border-b border-gray-50 hover:bg-sky-50/30 transition">
                         <td className="px-5 py-3.5">
-                          <span className="text-sm font-mono font-semibold text-gray-900">{loan.id}</span>
+                          <span className=" font-mono  text-gray-900">{loan.id}</span>
                         </td>
                         <td className="px-5 py-3.5">
                           <p className="font-semibold text-gray-800">{loan.userName || loan.userFullName}</p>

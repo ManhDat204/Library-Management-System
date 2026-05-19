@@ -9,6 +9,7 @@ import com.dat.LibraryManagementSystem.payload.response.ReportMonthlyRevenueItem
 import com.dat.LibraryManagementSystem.payload.response.ReportSubscriptionExpiringItemResponse;
 import com.dat.LibraryManagementSystem.payload.response.ReportSubscriptionMonthlyItemResponse;
 import com.dat.LibraryManagementSystem.payload.response.ReportSubscriptionPlanDistributionItemResponse;
+import com.dat.LibraryManagementSystem.payload.response.ReportRecentSubscriptionResponse;
 import com.dat.LibraryManagementSystem.payload.response.ReportSubscriptionsResponse;
 import com.dat.LibraryManagementSystem.payload.response.ReportLoanItemResponse;
 import com.dat.LibraryManagementSystem.payload.response.ReportTopFineUserResponse;
@@ -36,12 +37,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -107,6 +103,8 @@ public class ReportServiceImpl implements ReportService {
 
                 long activeLoans = bookLoanRepository.countActiveLoans();
                 Pageable pageable = PageRequest.of(0, 5);
+                List<ReportLoanItemResponse> activeLoanItems = mapToReportLoanItems(
+                                bookLoanRepository.findActiveLoans(pageable).getContent());
                 List<ReportLoanItemResponse> recentBorrows = mapToReportLoanItems(
                                 bookLoanRepository.findRecentCheckouts(pageable).getContent());
                 List<ReportLoanItemResponse> recentReturns = mapToReportLoanItems(
@@ -120,9 +118,9 @@ public class ReportServiceImpl implements ReportService {
                 List<ReportTopBorrowerResponse> topBorrowers = mapToReportTopBorrowers(
                                 bookLoanRepository.findTopBorrowersByCount(borrowerPageable).getContent());
 
-                Pageable genrePageable = PageRequest.of(0, 10);
+
                 List<ReportGenreStatsResponse> genreStats = mapToReportGenreStats(
-                                bookLoanRepository.countLoanGroupByGenre(genrePageable));
+                                bookLoanRepository.countLoanGroupByGenre());
 
                 return ReportOverviewResponse.builder()
                                 .startDate(resolvedStartDate)
@@ -142,6 +140,7 @@ public class ReportServiceImpl implements ReportService {
                                 .maleUsersCount(maleUsersCount)
                                 .femaleUsersCount(femaleUsersCount)
                                 .activeLoans(activeLoans)
+                                .activeLoanItems(activeLoanItems)
                                 .recentBorrows(recentBorrows)
                                 .recentReturns(recentReturns)
                                 .topFineUsers(topFineUsers)
@@ -210,6 +209,24 @@ public class ReportServiceImpl implements ReportService {
                                                 .build())
                                 .toList();
 
+                List<ReportRecentSubscriptionResponse> recentSubscriptions = subscriptionRepository
+                                .findRecentSubscriptions(PageRequest.of(0, 5))
+                                .getContent()
+                                .stream()
+                                .map(subscription -> ReportRecentSubscriptionResponse.builder()
+                                                .id(subscription.getId())
+                                                .userName(subscription.getUser() != null
+                                                                ? subscription.getUser().getFullName()
+                                                                : null)
+                                                .plan(resolvePlanName(subscription))
+                                                .startDate(subscription.getStartDate())
+                                                .endDate(subscription.getEndDate())
+                                                .price(defaultLong(subscription.getPrice()))
+                                                .active(subscription.getIsActive())
+                                                .createdAt(subscription.getCreatedAt())
+                                                .build())
+                                .toList();
+
                 return ReportSubscriptionsResponse.builder()
                                 .startDate(resolvedStartDate)
                                 .endDate(resolvedEndDate)
@@ -222,6 +239,7 @@ public class ReportServiceImpl implements ReportService {
                                 .monthlyStats(monthlyStats)
                                 .planDistribution(planDistribution)
                                 .expiringSoonSubscriptions(expiringItems)
+                                .recentSubscriptions(recentSubscriptions)
                                 .build();
         }
 
@@ -329,10 +347,13 @@ public class ReportServiceImpl implements ReportService {
                 return bookLoans.stream()
                                 .map(bl -> ReportLoanItemResponse.builder()
                                                 .id(bl.getId())
+                                                .bookId(bl.getBook() != null ? bl.getBook().getId() : null)
                                                 .userName(bl.getUser() != null ? bl.getUser().getFullName() : null)
                                                 .bookTitle(bl.getBook() != null ? bl.getBook().getTitle() : null)
                                                 .authorName(bl.getBook() != null && bl.getBook().getAuthor() != null
                                                                 ? bl.getBook().getAuthor().getAuthorName()
+                                                                : null)
+                                                .coverImageUrl(bl.getBook() != null ? bl.getBook().getCoverImageUrl()
                                                                 : null)
                                                 .checkoutDate(bl.getCheckoutDate())
                                                 .dueDate(bl.getDueDate())
@@ -410,32 +431,38 @@ public class ReportServiceImpl implements ReportService {
                         return new ArrayList<>();
                 }
 
-                // Calculate total loans for percentage
-                long totalLoans = genreData.stream()
-                                .mapToLong(data -> ((Number) data[1]).longValue())
-                                .sum();
+                List<Long> genreIds = genreData.stream()
+                        .map(data -> ((Number) data[0]).longValue())
+                        .toList();
+                Map<Long, Genre> genreMap = genreRepository.findAllById(genreIds).stream()
+                        .collect(Collectors.toMap(Genre::getId, g -> g));
 
-                List<ReportGenreStatsResponse> result = new ArrayList<>();
-                for (Object[] data : genreData) {
-                        Long genreId = ((Number) data[0]).longValue();
+            long totalLoans = genreData.stream()
+                    .mapToLong(data -> ((Number) data[1]).longValue())
+                    .sum();
+
+
+            return genreData.stream()
+                    .map(data -> {
+                        Long genreId   = ((Number) data[0]).longValue();
                         Long loanCount = ((Number) data[1]).longValue();
+                        Genre genre = genreMap.get(genreId);
+                        if (genre == null) return null;
 
-                        Genre genre = genreRepository.findById(genreId).orElse(null);
-                        if (genre == null) {
-                                continue;
-                        }
-
+                        // Tỉ lệ % so với TỔNG tất cả thể loại
                         int percentage = totalLoans > 0
-                                        ? (int) Math.round(((double) loanCount / totalLoans) * 100)
-                                        : 0;
+                                ? (int) Math.round((loanCount * 100.0) / totalLoans)
+                                : 0;
 
-                        result.add(ReportGenreStatsResponse.builder()
-                                        .genreId(genreId)
-                                        .genreName(genre.getName())
-                                        .loanCount(loanCount)
-                                        .percentage(percentage)
-                                        .build());
-                }
-                return result;
+                        return ReportGenreStatsResponse.builder()
+                                .genreId(genreId)
+                                .genreName(genre.getName())
+                                .loanCount(loanCount)
+                                .percentage(percentage)
+                                .build();
+                    })
+                    .filter(Objects::nonNull)
+                    .sorted(Comparator.comparingLong(ReportGenreStatsResponse::getLoanCount).reversed())
+                    .toList();
         }
 }

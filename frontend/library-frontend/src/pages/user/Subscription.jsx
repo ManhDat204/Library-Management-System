@@ -1,13 +1,10 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
-import PageHeader from "../../components/PageHeader"; 
+import PageHeader from "../../components/common/PageHeader";
+import Toast from "../../components/common/Toast";
+import api from "../../services/api";
 
-const api = axios.create({ baseURL: "http://localhost:8080/api" });
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
+
 
 const fmtPrice = (price, currency) => {
   if (!price || price <= 0) return "Miễn phí";
@@ -19,25 +16,6 @@ const fmtDuration = (days) => {
   if (days % 365 === 0) return `${days / 365} năm`;
   if (days % 30 === 0)  return `${days / 30} tháng`;
   return `${days} ngày`;
-};
-
-const Toast = ({ message, type, onDone }) => {
-  useEffect(() => { const t = setTimeout(onDone, 3000); return () => clearTimeout(t); }, []);
-  return (
-    <div style={{
-      position: "fixed", bottom: "2rem", right: "2rem", zIndex: 9999,
-      background: "#1a1a1a", color: "#f5f0e8", padding: "12px 20px",
-      borderRadius: 12, fontSize: "0.85rem", fontFamily: "'DM Sans',sans-serif",
-      boxShadow: "0 8px 32px rgba(0,0,0,0.2)",
-      display: "flex", alignItems: "center", gap: 10,
-      animation: "slideUp 0.3s ease",
-    }}>
-      <span style={{ color: type === "error" ? "#e85d3f" : "#22c55e" }}>
-        {type === "error" ? "✕" : "✓"}
-      </span>
-      {message}
-    </div>
-  );
 };
 
 const CancelModal = ({ planName, onConfirm, onClose, cancelling }) => {
@@ -173,27 +151,22 @@ const PlanCard = ({ plan, isCurrent, onSubscribe, onCancelRequest, subscribingId
         }}>{plan.name}</h3>
       </div>
 
-      {/* Plan code */}
       {plan.planCode && (
         <div style={{ fontSize: "0.7rem", color: "#ccc", marginBottom: 10, letterSpacing: "0.05em" }}>
           #{plan.planCode}
         </div>
       )}
 
-      {/* Price */}
+
       <div style={{ marginBottom: "1.25rem" }}>
         <span style={{
           fontSize: "1.7rem", fontWeight: 800, color: "#c8956c",
           fontFamily: "'Playfair Display',serif", lineHeight: 1,
         }}>{fmtPrice(plan.price, plan.currency)}</span>
-        {plan.durationDays >= 30 && plan.price > 0 && (
-          <span style={{ fontSize: "0.75rem", color: "#bbb", marginLeft: 8 }}>
-            /{fmtDuration(plan.durationDays)}
-          </span>
-        )}
+        {plan.durationDays >= 30 && plan.price > 0 }
       </div>
 
-      {/* Divider + info rows */}
+
       <div style={{ flex: 1, borderTop: "1px solid rgba(0,0,0,0.06)", marginBottom: "1.25rem" }}>
         {rows.map(([label, value]) => (
           <div key={label} style={{
@@ -211,8 +184,6 @@ const PlanCard = ({ plan, isCurrent, onSubscribe, onCancelRequest, subscribingId
           </p>
         )}
       </div>
-
-      {/* Action buttons */}
       {isCurrent ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <button disabled style={{
@@ -276,7 +247,7 @@ const PlanCard = ({ plan, isCurrent, onSubscribe, onCancelRequest, subscribingId
   );
 };
 
-const getUserIdFromStorage = () => localStorage.getItem("userId") ?? null;
+const getUserIdFromStorage = () => sessionStorage.getItem("userId") ?? null;
 
 export default function SubscriptionPage() {
   const [plans, setPlans]                                   = useState([]);
@@ -420,7 +391,7 @@ export default function SubscriptionPage() {
         />
       )}
 
-      {toast && <Toast message={toast.message} type={toast.type} onDone={() => setToast(null)} />}
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} position="bottom" timeout={3000} />}
     </>
   );
 }

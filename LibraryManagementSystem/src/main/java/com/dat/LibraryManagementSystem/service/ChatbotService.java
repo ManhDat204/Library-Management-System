@@ -1,7 +1,10 @@
 package com.dat.LibraryManagementSystem.service;
 
 import com.dat.LibraryManagementSystem.model.Book;
+import com.dat.LibraryManagementSystem.model.Genre;
 import com.dat.LibraryManagementSystem.repository.BookRepository;
+import com.dat.LibraryManagementSystem.repository.BookReviewRepository;
+import com.dat.LibraryManagementSystem.repository.GenreRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -29,9 +32,9 @@ import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
-public class GeminiChatService {
+public class ChatbotService {
 
-    private static final int BOOK_SCAN_LIMIT = 120;
+
     private static final int BOOK_CONTEXT_LIMIT = 20;
     private static final Set<String> STOP_WORDS = Set.of(
             "toi", "minh", "ban", "cho", "can", "muon", "tim", "sach", "cuon", "quyen",
@@ -39,6 +42,11 @@ public class GeminiChatService {
             "nhung", "cac", "mot", "nhieu", "it", "trong", "thu", "vien");
 
     private final BookRepository bookRepository;
+    private final GenreRepository genreRepository;
+    private final BookReviewRepository bookReviewRepository;
+
+
+
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
@@ -129,12 +137,32 @@ public class GeminiChatService {
         systemInstruction.putArray("parts")
                 .addObject()
                 .put("text", """
-                        Ban la tro ly AI cua he thong quan ly thu vien SachHay.
-                        Tra loi bang tieng Viet, ro rang, ngan gon, than thien.
-                        Khi nguoi dung hoi ve sach trong thu vien, chi dua tren danh sach sach duoc cung cap.
-                        Neu du lieu chua du, hay noi ro la he thong chua co du lieu phu hop.
-                        Khong bia ten sach, tac gia, so luong con lai hoac thong tin khong co trong ngu canh.
-                        """);
+                Bạn là trợ lý AI của hệ thống quản lý thư viện Bookify.
+                Trả lời bằng tiếng Việt, rõ ràng, ngắn gọn, thân thiện.
+                Khi người dùng hỏi về sách, chỉ dựa trên danh sách sách được cung cấp.
+                Nếu dữ liệu chưa đủ, hãy nói rõ là hệ thống chưa có dữ liệu phù hợp.
+                Không bịa tên sách, tác giả, số lượng còn lại hoặc thông tin không có trong ngữ cảnh.
+                        Neu goi y sach, hay trinh bay tung cuon theo dung cau truc:
+                        Ten sach: ...
+                        Tac gia: ...
+                        The loai: ...
+                        So ban con lai: ...
+                        Mo ta ngan: ...
+                        Ly do nen doc: ...
+                        Anh bia: [IMG:url]
+                        
+                        Khong dat [IMG:url] ngay sau ten sach hoặc giua cau.
+                QUAN TRỌNG: Không dùng ký hiệu markdown như **, *, #, ##.
+                        Khi gioi thieu sach co anh bia, khong chen anh vao giua cau.
+                        Hay dat anh bia tren mot dong rieng o cuoi thong tin cua tung cuon sach theo dinh dang [IMG:url].
+                        Dinh dang goi y cho moi cuon:
+                        Ten sach: ...
+                        Tac gia: ...
+                        The loai: ...
+                        So ban con lai: ...
+                        Mo ta ngan: ...
+                        Anh bia: [IMG:url]
+                """);
 
         ArrayNode contents = root.putArray("contents");
         ObjectNode content = contents.addObject();
@@ -142,20 +170,111 @@ public class GeminiChatService {
         content.putArray("parts").addObject().put("text", prompt);
 
         ObjectNode generationConfig = root.putObject("generationConfig");
-        generationConfig.put("temperature", 0.4);
-        generationConfig.put("maxOutputTokens", 700);
+        generationConfig.put("temperature", 0.7);
+        generationConfig.put("maxOutputTokens", 2048);
 
         return root.toString();
     }
 
     private String buildPrompt(String message, List<Book> books) {
         return """
-                Cau hoi cua nguoi dung:
-                %s
-                Du lieu sach co trong he thong:
-                %s
-                Hay tra loi truc tiep cau hoi. Neu goi y sach, uu tien sach con ban co san va neu ly do ngan gon.
-                """.formatted(message, buildBookContext(books));
+        Cau hoi cua nguoi dung:
+        %s
+
+        Tong quan he thong Bookify:
+        %s
+
+        Du lieu sach lien quan den cau hoi:
+        %s
+
+        Huong dan tra loi:
+        - Neu nguoi dung hoi tong quan ve thu vien, quy trinh, phi phat, goi thanh vien, trang thai don, hay dung phan Tong quan he thong.
+        - Neu nguoi dung hoi goi y sach hoac tim sach, hay dung ca Tong quan he thong va Du lieu sach lien quan.
+        - Chi tra loi dua tren du lieu duoc cung cap.
+        - Neu khong co du lieu phu hop, noi ro rang la he thong chua co du lieu phu hop.
+        - Khong bia ten sach, tac gia, so luong, phi phat hoac quy dinh khong nam trong context.
+        - Tra loi bang tieng Viet, ro rang, ngan gon.
+        """.formatted(message, buildSystemOverviewContext(), buildBookContext(books));
+    }
+    private String buildSystemOverviewContext() {
+        StringBuilder context = new StringBuilder();
+
+        context.append("""
+        Bookify la he thong quan ly thu vien online, ho tro nguoi dung tim sach, muon sach, giao sach, tra sach, quan ly vi, goi thanh vien va phi phat.
+
+        Quy trinh muon sach:
+        - Nguoi dung can dang nhap.
+        - Nguoi dung can co goi thanh vien dang hoat dong.
+        - Nguoi dung can co dia chi mac dinh.
+        - Sach phai dang active va con availableCopies > 0.
+        - Nguoi dung khong duoc co sach qua han.
+        - Nguoi dung khong duoc co phi phat dang cho thanh toan.
+        - Khi muon sach, he thong tao BookLoan trang thai CHECK_OUT va tru availableCopies cua sach.
+        - Neu sach co gia, he thong khoa tien coc trong vi bang gia sach.
+
+        Quy trinh giao va tra sach:
+        - CHECK_OUT: don moi tao, cho thu vien xu ly giao.
+        - SHIPPING: sach dang duoc van chuyen.
+        - DELIVERED: nguoi dung da nhan sach va dang muon.
+        - OVERDUE: sach qua han tra.
+        - PENDING_RETURN: nguoi dung da gui yeu cau tra, cho admin/nhan vien duyet.
+        - RETURNED: sach da tra thanh cong.
+        - LOST: sach bi mat.
+        - DAMAGED: sach bi hu hong.
+
+        Quy dinh phi:
+        - Tra qua han bi phat 5.000 VND moi ngay.
+        - Khi tra sach thanh cong, he thong hoan tien coc va tru phi tra sach 20.000 VND.
+        - Neu sach bi mat hoac hu hong, he thong tao phi phat theo tinh trang sach.
+        """);
+
+        try {
+            long totalActiveBooks = bookRepository.countByActiveTrue();
+            long totalAvailableBooks = bookRepository.countAvailableBooks();
+
+            context.append("\nThong ke thu vien hien tai:\n");
+            context.append("- Tong sach dang hoat dong: ").append(totalActiveBooks).append("\n");
+            context.append("- Tong sach con co the muon: ").append(totalAvailableBooks).append("\n");
+
+            List<Genre> genres = genreRepository.findByActiveTrueOrderByNameAsc();
+            if (!genres.isEmpty()) {
+                context.append("- The loai hien co: ");
+                context.append(genres.stream()
+                        .limit(20)
+                        .map(Genre::getName)
+                        .filter(name -> name != null && !name.isBlank())
+                        .reduce((a, b) -> a + ", " + b)
+                        .orElse("Chua co du lieu"));
+                context.append("\n");
+            }
+
+            List<Book> topBorrowedBooks = bookRepository.findTopBorrowedBooks(PageRequest.of(0, 5));
+            if (!topBorrowedBooks.isEmpty()) {
+                context.append("- Sach duoc muon nhieu: ");
+                context.append(topBorrowedBooks.stream()
+                        .map(Book::getTitle)
+                        .filter(title -> title != null && !title.isBlank())
+                        .reduce((a, b) -> a + ", " + b)
+                        .orElse("Chua co du lieu"));
+                context.append("\n");
+            }
+
+            List<Object[]> topRatedRows = bookReviewRepository.findTopRatedBooks(PageRequest.of(0, 5));
+            if (!topRatedRows.isEmpty()) {
+                context.append("- Sach duoc danh gia cao: ");
+                context.append(topRatedRows.stream()
+                        .map(row -> (Book) row[0])
+                        .map(Book::getTitle)
+                        .filter(title -> title != null && !title.isBlank())
+                        .reduce((a, b) -> a + ", " + b)
+                        .orElse("Chua co du lieu"));
+                context.append("\n");
+            }
+        } catch (Exception e) {
+            context.append("\nThong ke thu vien hien tai: Chua lay duoc du lieu thong ke.\n");
+        }
+
+        return context.toString();
     }
 
     private String buildBookContext(List<Book> books) {
@@ -168,14 +287,15 @@ public class GeminiChatService {
             Book book = books.get(i);
             context.append(i + 1)
                     .append(". ID: ").append(book.getId())
-                    .append(" | Ten: ").append(safe(book.getTitle()))
-                    .append(" | Tac gia: ").append(book.getAuthor() != null ? safe(book.getAuthor().getAuthorName()) : "Khong ro")
-                    .append(" | The loai: ").append(book.getGenre() != null ? safe(book.getGenre().getName()) : "Khong ro")
-                    .append(" | Con: ").append(book.getAvailableCopies() != null ? book.getAvailableCopies() : 0)
+                    .append(" | Ảnh: ").append(safe(book.getCoverImageUrl()))
+                    .append(" | Title: ").append(safe(book.getTitle()))
+                    .append(" | Tác Giả: ").append(book.getAuthor() != null ? safe(book.getAuthor().getAuthorName()) : "Khong ro")
+                    .append(" | Thể loại: ").append(book.getGenre() != null ? safe(book.getGenre().getName()) : "Khong ro")
+                    .append(" | Còn: ").append(book.getAvailableCopies() != null ? book.getAvailableCopies() : 0)
                     .append("/").append(book.getTotalCopies() != null ? book.getTotalCopies() : 0);
 
             if (book.getDescription() != null && !book.getDescription().isBlank()) {
-                context.append(" | Mo ta: ").append(truncate(book.getDescription(), 180));
+                context.append(" | Mô tả: ").append(truncate(book.getDescription(), 180));
             }
             context.append("\n");
         }
@@ -183,37 +303,42 @@ public class GeminiChatService {
     }
 
     private List<Book> findCandidateBooks(String message) {
-        List<Book> allBooks = bookRepository.findActiveBooksForChat(PageRequest.of(0, BOOK_SCAN_LIMIT));
         List<String> tokens = extractTokens(message);
+
         if (tokens.isEmpty()) {
-            return allBooks.stream().limit(BOOK_CONTEXT_LIMIT).toList();
+            return bookRepository.findActiveBooksForChat(PageRequest.of(0, BOOK_CONTEXT_LIMIT));
         }
 
-        List<Book> matched = allBooks.stream()
-                .filter(book -> matchesAnyToken(book, tokens))
-                .limit(BOOK_CONTEXT_LIMIT)
-                .toList();
-
-        if (matched.size() >= 8) {
-            return matched;
-        }
-
-        List<Book> candidates = new ArrayList<>(matched);
+        List<Book> candidates = new ArrayList<>();
         Set<Long> addedIds = new HashSet<>();
-        matched.stream().map(Book::getId).forEach(addedIds::add);
 
-        for (Book book : allBooks) {
+        for (String token : tokens) {
             if (candidates.size() >= BOOK_CONTEXT_LIMIT) {
                 break;
             }
-            if (book.getId() == null || !addedIds.contains(book.getId())) {
-                candidates.add(book);
-                if (book.getId() != null) {
+
+            List<Book> foundBooks = bookRepository.searchActiveBooksForChat(
+                    token,
+                    PageRequest.of(0, BOOK_CONTEXT_LIMIT)
+            );
+
+            for (Book book : foundBooks) {
+                if (book.getId() != null && !addedIds.contains(book.getId())) {
+                    candidates.add(book);
                     addedIds.add(book.getId());
+                }
+
+                if (candidates.size() >= BOOK_CONTEXT_LIMIT) {
+                    break;
                 }
             }
         }
-        return candidates;
+
+        if (!candidates.isEmpty()) {
+            return candidates;
+        }
+
+        return bookRepository.findActiveBooksForChat(PageRequest.of(0, BOOK_CONTEXT_LIMIT));
     }
 
     private boolean matchesAnyToken(Book book, List<String> tokens) {

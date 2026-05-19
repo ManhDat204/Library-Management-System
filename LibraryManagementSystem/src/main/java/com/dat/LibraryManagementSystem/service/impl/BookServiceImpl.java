@@ -122,7 +122,6 @@ public class BookServiceImpl implements BookService {
 
     @Override
     public Long getTotalActiveBooks() {
-
         return bookRepository.countByActiveTrue();
     }
 
@@ -171,6 +170,9 @@ public class BookServiceImpl implements BookService {
         Sort sort = sortDirection.equalsIgnoreCase("ASC")
                 ? Sort.by(sortBy).ascending()
                 : Sort.by(sortBy).descending();
+        sort = sort.and(sortDirection.equalsIgnoreCase("ASC")
+                ? Sort.by("id").ascending()
+                : Sort.by("id").descending());
         return PageRequest.of(page, size, sort);
     }
 

@@ -8,4 +8,5 @@ export const fineService = {
   payFine: (id, data) => api.post(`/fines/${id}/pay`, data),
   getFineById: (id) => api.get(`/fines/${id}`),
   waiveFine: (id, data) => api.post(`/fines/${id}/waive`, data),
+  getFineTypeRatios: () => api.get("/fines/stats/type-ratio"),
 };

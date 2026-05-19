@@ -49,7 +49,7 @@ public class BookDTO {
     @Size( max = 20, message = "Ngon ngu khong qua 20 ki tu")
     private String language;
 
-    @Size( max = 2000, message = "Mo ta khong qua 2000 ki tu")
+    @Size( max = 5000, message = "Mo ta khong qua 5000 ki tu")
     private String description;
 
     @Min(value =1, message="So trang it nhat la 1")

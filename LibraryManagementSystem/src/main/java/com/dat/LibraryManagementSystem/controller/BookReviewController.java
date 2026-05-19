@@ -42,7 +42,7 @@ public class BookReviewController {
     @DeleteMapping("/{reviewId}")
     public ResponseEntity<?> deleteReview(@PathVariable Long reviewId) throws Exception{
         bookReviewService.deleteReview(reviewId);
-        return ResponseEntity.ok(new ApiResponse("Xoa review thanh cong", true));
+        return ResponseEntity.ok(new ApiResponse("Xoa review thành công", true));
     }
 
 

@@ -14,6 +14,7 @@ import java.time.LocalDate;
 public class BookLoanSearchRequest {
     private Long userId;
     private Long bookId;
+    private String searchTerm;
     private BookLoanStatus status;
     private Boolean overdueOnly;
     private Boolean unpaidFinesOnly;

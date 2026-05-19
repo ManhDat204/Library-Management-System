@@ -26,12 +26,16 @@ function Subscriptions() {
   const [detail, setDetail]         = useState(null);
 
   const showToast = (msg, type = "info") => setToast({ message: msg, type });
-  const pageSize  = 10;
+
 
   const fetchSubs = async (p = page) => {
     setLoading(true);
     try {
-      const res = await subscriptionService.searchSubscriptions({ page: p, size: pageSize });
+      const res = await subscriptionService.searchSubscriptions({ 
+      page: p, 
+      size: 10,
+      sortBy: 'id',
+      sortDirection: 'DESC'});
       const data = res.data || res;
       if (Array.isArray(data)) {
         setSubs(data);
@@ -136,21 +140,6 @@ function Subscriptions() {
               </tbody>
             </table>
           </div>
-
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between px-5 py-4 border-t border-gray-100 bg-gray-50/50">
-              <p className="text-sm text-gray-500">Trang {page + 1} / {totalPages} · {totalElements} đăng ký</p>
-              <div className="flex gap-1.5">
-                <button onClick={() => setPage(0)} disabled={page === 0} className="px-2 py-1.5 rounded-lg text-xs border border-gray-200 disabled:opacity-40 hover:bg-white transition">«</button>
-                <button onClick={() => setPage(p => Math.max(0, p-1))} disabled={page === 0} className="px-2.5 py-1.5 rounded-lg text-xs border border-gray-200 disabled:opacity-40 hover:bg-white transition flex items-center gap-1"><ChevronLeft size={14}/> Trước</button>
-                {Array.from({ length: totalPages }, (_, i) => i).filter(i => Math.abs(i - page) <= 2).map(i => (
-                  <button key={i} onClick={() => setPage(i)} className={`w-8 h-8 rounded-lg text-xs font-medium transition ${i === page ? "bg-amber-500 text-white" : "border border-gray-200 hover:bg-white text-gray-600"}`}>{i+1}</button>
-                ))}
-                <button onClick={() => setPage(p => Math.min(totalPages-1, p+1))} disabled={page >= totalPages-1} className="px-2.5 py-1.5 rounded-lg text-xs border border-gray-200 disabled:opacity-40 hover:bg-white transition flex items-center gap-1">Sau <ChevronRight size={14}/></button>
-                <button onClick={() => setPage(totalPages-1)} disabled={page >= totalPages-1} className="px-2 py-1.5 rounded-lg text-xs border border-gray-200 disabled:opacity-40 hover:bg-white transition">»</button>
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
